@@ -1,0 +1,13 @@
+# ignore the virtual environment folder.
+.venv/
+env/
+
+# ignore the database.
+db.sqlite3
+
+# Ignore compiled python files.
+__pycache__/
+*.pyc
+
+# Ignore VS Code settings.
+.vscode/
