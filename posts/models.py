@@ -1,7 +1,7 @@
 from django.db import models
 
 class User(models.Model):
-    username = models.CharField(max_length=100, unique=True) #u sername's unique.. well username.
+    username = models.CharField(max_length=100, unique=True) #username's unique.. well username.
     email = models.EmailField(unique=True) # their email is unique too.
     created_at = models.DateTimeField(auto_now_add=True) # timestamp for when the user was created.
 
@@ -10,9 +10,17 @@ class User(models.Model):
 
 class Post(models.Model):
     content = models.TextField() # whatever is inside the post.
-    # this links the Post to the User... on_delete=models.CASCADE means if you delete the User, their Posts get deleted too.
-    author = models.ForeignKey(User, on_delete=models.CASCADE) 
+    author = models.ForeignKey(User, related_name='posts', on_delete=models.CASCADE) # this links the Post to the User... on_delete=models.CASCADE means if you delete the User, their Posts get deleted too; related_name='posts' was added to allow user to get all posts requested.
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.content[:50]
+        return f"Post by {self.author.username} at {self.created_at}" # modified from "return self.content[:50]"; shows who made the post and when.  
+    
+class Comment(models.Model):  
+    text = models.TextField() # contains the comment text.
+    author = models.ForeignKey(User, related_name='comments', on_delete=models.CASCADE) # links the comment to the User who made it; CASCADE deletes comments if the user is deleted.
+    post = models.ForeignKey(Post, related_name='comments', on_delete=models.CASCADE) # links the comment to the Post it belongs to; CASCADE deletes comments if the post is deleted.
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comment by {self.author.username} on Post {self.post.id}" # returns a string showing who made the comment and on which post.
