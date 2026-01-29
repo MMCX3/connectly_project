@@ -1,12 +1,11 @@
+# posts/models.py
+# Defines the database models for Users, Posts, and Comments.
+
 from django.db import models
+from django.contrib.auth.models import User
 
-class User(models.Model):
-    username = models.CharField(max_length=100, unique=True) #username's unique.. well username.
-    email = models.EmailField(unique=True) # their email is unique too.
-    created_at = models.DateTimeField(auto_now_add=True) # timestamp for when the user was created.
-
-    def __str__(self):
-        return self.username
+# DELETED custom User model; using Django's built-in User model instead.
+# REASON: current User model doesn't have hash password functionality, which is essential for authentication. 
 
 class Post(models.Model):
     content = models.TextField() # whatever is inside the post.

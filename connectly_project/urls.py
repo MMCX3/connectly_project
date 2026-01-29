@@ -1,3 +1,4 @@
+# connectly_project/urls.py
 """
 URL configuration for connectly_project project.
 

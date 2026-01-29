@@ -5,6 +5,13 @@ env/
 # ignore the database.
 db.sqlite3
 
-# Ignore compiled python files.
+# ignore compiled python files.
 __pycache__/
 *.pyc
+
+# ignore environment variable files.
+.env
+
+# ignore cert and key files.
+cert.pem
+key.pem
