@@ -13,19 +13,41 @@ from .permissions import IsPostAuthor
 
 class UserListCreate(APIView):
 
+    def get_authenticators(self):
+        # allow public registration (POST) but require token for viewing users (GET)
+        if self.request.method == 'POST':
+            return []  # no authentication for user registration
+        return [TokenAuthentication()]
+
+    def get_permissions(self):
+        # allow public registration (POST) but require authentication for viewing users (GET)
+        if self.request.method == 'POST':
+            return []  # no permissions for user registration
+        return [IsAuthenticated()]
+
     def get(self, request): # handles GET requests to retrieve all users.
         users = User.objects.all()
         serializer = UserSerializer(users, many=True) # many=True serializes multiple user objects.
         return Response(serializer.data)
 
-    def post(self, request): # handles POST requests to create a new user.
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid(): # validates the incoming data.
-            serializer.save() # saves the new user to the database.
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        email = request.data.get('email', '')
+        
+        # create_user method for password hashing 
+        user = User.objects.create_user(
+            username=username,
+            password=password,  # will be automatically hashed
+            email=email
+        )
+        
+        serializer = UserSerializer(user) # serialize the newly created user
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class PostListCreate(APIView):
+    authentication_classes = [TokenAuthentication] # token authentication required
+    permission_classes = [IsAuthenticated] # only authenticated users can access
 
     def get(self, request): # handles GET requests to retrieve all posts.
         posts = Post.objects.all()
@@ -39,15 +61,9 @@ class PostListCreate(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class PostDetailView(APIView):
-    permission_classes = [IsAuthenticated, IsPostAuthor] # only authenticated users who are the post author can access
-
-    def get(self, request, pk): # handles GET requests to retrieve a specific post by its primary key (pk).
-        post = Post.objects.get(pk=pk)
-        self.check_object_permissions(request, post)
-        return Response({"content": post.content})
-
 class CommentListCreate(APIView):
+    authentication_classes = [TokenAuthentication] # token authentication required
+    permission_classes = [IsAuthenticated] # only authenticated users can access
 
     def get(self, request): # handles GET requests to retrieve all comments.
         comments = Comment.objects.all()
@@ -67,3 +83,19 @@ class ProtectedView(APIView): # only authenticated users can access this view us
 
     def get(self, request):
         return Response({"message": "Authenticated!"})
+    
+class PostDetailView(APIView):
+    authentication_classes = [TokenAuthentication] # added for token-based authentication
+    permission_classes = [IsAuthenticated, IsPostAuthor] # role-based access control using IsPostAuthor
+
+    def get(self, request, pk): # modified GET method with error handling for non-existent posts.
+        try:
+            post = Post.objects.get(pk=pk)
+            self.check_object_permissions(request, post)
+            serializer = PostSerializer(post)
+            return Response(serializer.data)
+        except Post.DoesNotExist:
+            return Response(
+                {"error": "Post not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )

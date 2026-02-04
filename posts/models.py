@@ -5,7 +5,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 # DELETED custom User model; using Django's built-in User model instead.
-# REASON: current User model doesn't have hash password functionality, which is essential for authentication. 
+# REASON: custom User lacks Django’s password hashing and auth integration, making it insecure and incompatible with groups and tokens.
 
 class Post(models.Model):
     content = models.TextField() # whatever is inside the post.

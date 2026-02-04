@@ -8,7 +8,15 @@ from .models import Post, Comment
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email'] # deleted password field for security reasons, as well as id and created_at (which is supposed to be date_joined now since we are using User model from Django) to follow given manual from Week 4
+        fields = ['id', 'username', 'email', 'password', 'date_joined'] # retained password and retained created_at to match format of other serializers, as info is not confidential/sensitive; renamed the created_at to date_joined too to match Django's User model (different from Manual Week 4)
+        extra_kwargs = {'password': {'write_only': True}}  # don't return password in responses; added this for security since we have password in the fields, this ensures we can include password for user creation and 'write_only=True' hides pass from responses
+    
+class PostSerializer(serializers.ModelSerializer):
+    comments = serializers.StringRelatedField(many=True, read_only=True)
+    
+    class Meta:
+        model = Post
+        fields = ['id', 'content', 'author', 'created_at', 'comments']  # includes all Post fields plus the related comments.
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,10 +32,3 @@ class CommentSerializer(serializers.ModelSerializer):
         if not User.objects.filter(id=value.id).exists():
             raise serializers.ValidationError("Author not found.")
         return value
-    
-class PostSerializer(serializers.ModelSerializer):
-    comments = serializers.StringRelatedField(many=True, read_only=True)
-    
-    class Meta:
-        model = Post
-        fields = ['id', 'content', 'author', 'created_at', 'comments']  # includes all Post fields plus the related comments.
