@@ -9,10 +9,10 @@
 ### Development Phases
 
 ### Milestone 1
-- ✅ Phase 1: CRUD Operations (Week 1-2)
+- ✅ Phase 1: CRUD Operations (Weeks 1-2)
 - ✅ Phase 2: Data Handling & Validation (Week 3)
 - ✅ Phase 3: Security Implementation (Week 4)
-- 🔄 Phase 4: Design Patterns (Coming Soon)
+- ✅ Phase 4: Design Patterns (Week 5)
 
 **Note:** Milestone 2 and Terminal Assessment to follow.
 

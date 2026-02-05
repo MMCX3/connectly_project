@@ -16,8 +16,9 @@ class PostSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Post
-        fields = ['id', 'content', 'author', 'created_at', 'comments']  # includes all Post fields plus the related comments.
-
+        fields = ['id', 'title', 'content', 'post_type', 'metadata', 'author', 'created_at', 'comments']  # includes all Post fields plus the related comments | week 5 added: post_type, & metadata
+        read_only_fields = ['author']  # author set automatically from request.user
+        
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment

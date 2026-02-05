@@ -10,6 +10,12 @@ from django.contrib.auth.models import User
 from .models import Post, Comment
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
 from .permissions import IsPostAuthor
+from singletons.logger_singleton import LoggerSingleton
+from factories.post_factory import PostFactory
+
+# initialize logger once at module level
+logger = LoggerSingleton().get_logger()
+logger.info("API initialized successfully.")
 
 class UserListCreate(APIView):
 
@@ -35,31 +41,50 @@ class UserListCreate(APIView):
         password = request.data.get('password')
         email = request.data.get('email', '')
         
-        # create_user method for password hashing 
-        user = User.objects.create_user(
-            username=username,
-            password=password,  # will be automatically hashed
-            email=email
-        )
-        
-        serializer = UserSerializer(user) # serialize the newly created user
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:  # error handling for logging
+            # create_user method for password hashing 
+            user = User.objects.create_user(
+                username=username,
+                password=password,  # will be automatically hashed
+                email=email
+            )
+            logger.info(f"User created successfully: {username}")  # log successful user creation
+            serializer = UserSerializer(user) # serialize the newly created user
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error creating user: {str(e)}")  # log errors during user creation
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class PostListCreate(APIView):
     authentication_classes = [TokenAuthentication] # token authentication required
     permission_classes = [IsAuthenticated] # only authenticated users can access
 
     def get(self, request): # handles GET requests to retrieve all posts.
+        logger.info("Fetching all posts")  # log posts retrieval
         posts = Post.objects.all()
         serializer = PostSerializer(posts, many=True) # many=True serializes multiple post objects.
         return Response(serializer.data)
 
     def post(self, request): # handles POST requests to create a new post.
-        serializer = PostSerializer(data=request.data)
-        if serializer.is_valid(): # validates the incoming data.
-            serializer.save() # saves the new post to the database.
+         # use factory pattern to create posts with validation
+        try:
+            post = PostFactory.create_post(
+                post_type=request.data.get('post_type', 'text'),
+                title=request.data.get('title', 'Untitled'),
+                content=request.data.get('content', ''),
+                metadata=request.data.get('metadata'),
+                author=request.user  # automatically use authenticated user
+            )
+            logger.info(f"Post created successfully: {post.title} (type: {post.post_type})")  # log post creation
+            serializer = PostSerializer(post)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            logger.error(f"Error creating post: {str(e)}")  # log validation errors
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Unexpected error creating post: {str(e)}")
+            return Response({'error': 'An error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CommentListCreate(APIView):
     authentication_classes = [TokenAuthentication] # token authentication required
