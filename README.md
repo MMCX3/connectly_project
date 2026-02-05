@@ -32,7 +32,7 @@
 ### Security Implementation (Week 4)
 - **Token-based authentication** (REST Framework Token Auth)
 - **Role-based access control (RBAC)** with custom permissions
-- **Custom permissions** (IsPostAuthor) for content ownership verification
+- **Custom permissions** (IsPostAuthorOrAdmin) for content ownership and moderation
 - **Secure password hashing** using multiple algorithms:
   - Argon2 (primary)
   - PBKDF2 (fallback)
@@ -48,6 +48,23 @@
 - **RESTful API design** with proper serialization
 - **Data validation** at both serializer and model levels
 - **Comprehensive logging** for API operations and error tracking
+
+## CRUD Implementation Strategy
+
+### Posts: Full CRUD (Week 4 Focus)
+Posts implement complete CRUD operations (CREATE, READ, UPDATE, DELETE) with role-based access control:
+- **Regular users** can create posts and modify/delete their own posts
+- **Admin users** can modify/delete any post for content moderation
+- Demonstrates RBAC implementation as required by Week 4 manual
+
+### Users & Comments: Basic Operations (Weeks 1-3)
+Users and Comments currently implement CREATE and READ operations:
+- Foundation established per Weeks 1-3 requirements
+- UPDATE/DELETE operations to be considered for future iterations based on:
+  - User profile management requirements
+  - Comment moderation policies
+  - Security considerations
+- Current focus aligns with Week 4 manual emphasis on Post modification and RBAC testing
 
 ---
 
@@ -72,8 +89,6 @@ Include token in request headers for authenticated operations:
 Authorization: Token <your-token-here>
 ```
 
-## API Endpoints
-
 ### Available Endpoints
 
 **Authentication**
@@ -86,7 +101,9 @@ Authorization: Token <your-token-here>
 **Posts**
 - `GET /posts/posts/` - List all posts (requires authentication)
 - `POST /posts/posts/` - Create a new post (requires authentication)
-- `GET /posts/posts/<id>/` - Retrieve a specific post (requires authentication + author ownership)
+- `GET /posts/posts/<id>/` - Retrieve a specific post (requires authentication)
+- `PUT /posts/posts/<id>/` - Update a specific post (requires authentication + author or admin)
+- `DELETE /posts/posts/<id>/` - Delete a specific post (requires authentication + author or admin)
 
 **Comments**
 - `GET /posts/comments/` - List all comments (requires authentication)
@@ -97,7 +114,6 @@ Authorization: Token <your-token-here>
 - `GET /api-auth/` - DRF browsable API login/logout
 
 **Note:** Only user registration (`POST /posts/users/`) and token authentication (`POST /api-token-auth/`) are publicly accessible. All other endpoints require token authentication.
-
 
 ---
 
@@ -162,7 +178,27 @@ python manage.py createsuperuser
 
 Follow prompts to set username, email, and password.
 
-### 6. Generate SSL Certificates
+### 6. Set Up Admin Group for RBAC
+
+```bash
+python manage.py shell
+```
+
+```python
+from django.contrib.auth.models import Group, User
+
+# Create Admin group
+admin_group, created = Group.objects.get_or_create(name="Admin")
+
+# Assign superuser to Admin group
+admin_user = User.objects.get(username='your_admin_username')
+admin_user.groups.add(admin_group)
+
+print(f"Admin groups: {[g.name for g in admin_user.groups.all()]}")
+exit()
+```
+
+### 7. Generate SSL Certificates
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
@@ -170,7 +206,7 @@ openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -node
 
 This creates `cert.pem` and `key.pem` files needed for HTTPS.
 
-### 7. Create Authentication Token
+### 8. Create Authentication Token
 
 ```bash
 python manage.py shell
@@ -192,8 +228,7 @@ exit()
 
 ## Project Information
 
-**Section:** H3101
-**Group:** 6
+**Section:** H3101  
+**Group:** 6  
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** February 5, 2026
-
+**Last Updated:** February 6, 2026

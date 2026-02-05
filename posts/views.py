@@ -5,6 +5,13 @@
 WEEK 5 NOTES (difference from manual):
 # Factory pattern integrated into PostListCreate (didn't create separate CreatePostView) to maintain REST principles, Week 4 security, and avoid endpoint duplication.
 # LoggerSingleton added to UserListCreate (registration/errors) and PostListCreate (factory validation/creation) for centralized logging.
+
+UPDATED for complete CRUD:
+# Added UPDATE (PUT) and DELETE methods to PostDetailView
+# Users and Comments no PUT & DELETE yet, but can be added similarly in the next weeks once next steps are clear.
+# Integrated IsPostAuthorOrAdmin permission for role-based access control
+# Admins can edit/delete any post, authors can only edit/delete their own
+
 '''
 
 
@@ -16,7 +23,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from .models import Post, Comment
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
-from .permissions import IsPostAuthor
+from .permissions import IsPostAuthor, IsPostAuthorOrAdmin
 from singletons.logger_singleton import LoggerSingleton
 from factories.post_factory import PostFactory
 
@@ -117,16 +124,65 @@ class ProtectedView(APIView): # only authenticated users can access this view us
         return Response({"message": "Authenticated!"})
     
 class PostDetailView(APIView):
-    authentication_classes = [TokenAuthentication] # added for token-based authentication
-    permission_classes = [IsAuthenticated, IsPostAuthor] # role-based access control using IsPostAuthor
+    """
+    Handles CRUD operations for individual posts:
+    - GET: Retrieve a specific post (any authenticated user)
+    - PUT: Update a post (only author or admin)
+    - DELETE: Delete a post (only author or admin)
+    """
+    authentication_classes = [TokenAuthentication] # token-based authentication
+    permission_classes = [IsAuthenticated, IsPostAuthorOrAdmin] # role-based access control
 
-    def get(self, request, pk): # modified GET method with error handling for non-existent posts.
+    def get(self, request, pk): 
+        """Retrieve a specific post by ID"""
         try:
             post = Post.objects.get(pk=pk)
-            self.check_object_permissions(request, post)
+            # GET requests don't need author/admin check - any authenticated user can view
             serializer = PostSerializer(post)
+            logger.info(f"Post {pk} retrieved by {request.user.username}")
             return Response(serializer.data)
         except Post.DoesNotExist:
+            logger.warning(f"Post {pk} not found")
+            return Response(
+                {"error": "Post not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def put(self, request, pk):
+        """Fully update a post (only author or admin)"""
+        try:
+            post = Post.objects.get(pk=pk)
+            # check if user is author or admin
+            self.check_object_permissions(request, post)
+            
+            serializer = PostSerializer(post, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                logger.info(f"Post {pk} updated by {request.user.username}")
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Post.DoesNotExist:
+            logger.warning(f"Post {pk} not found for update")
+            return Response(
+                {"error": "Post not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    def delete(self, request, pk):
+        """Delete a post (only author or admin)"""
+        try:
+            post = Post.objects.get(pk=pk)
+            # check if user is author or admin
+            self.check_object_permissions(request, post)
+            
+            post.delete()
+            logger.info(f"Post {pk} deleted by {request.user.username}")
+            return Response(
+                {"message": "Post deleted successfully"}, 
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except Post.DoesNotExist:
+            logger.warning(f"Post {pk} not found for deletion")
             return Response(
                 {"error": "Post not found"}, 
                 status=status.HTTP_404_NOT_FOUND
