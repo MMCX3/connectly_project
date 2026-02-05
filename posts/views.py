@@ -1,6 +1,13 @@
 # posts/views.py
 # Handles HTTP requests for Users, Posts, and Comments.
 
+'''
+WEEK 5 NOTES (difference from manual):
+# Factory pattern integrated into PostListCreate (didn't create separate CreatePostView) to maintain REST principles, Week 4 security, and avoid endpoint duplication.
+# LoggerSingleton added to UserListCreate (registration/errors) and PostListCreate (factory validation/creation) for centralized logging.
+'''
+
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
