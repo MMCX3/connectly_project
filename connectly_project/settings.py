@@ -130,7 +130,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # HTTPS Security Settings
 SECURE_SSL_REDIRECT = True  
 SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_HTTPONLY = True # prevents JavaScript access to session cookie for security; added to show HttpOnly flag true in cookies
 CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True # adds extra protection against XSS attacks by preventing JavaScript access to the CSRF cookie; added to show HttpOnly flag true in cookies
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
