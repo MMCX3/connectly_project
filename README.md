@@ -20,9 +20,18 @@
 
 ## Features
 
-### Security Implementation
+### Design Patterns (Week 5)
+- **Singleton Pattern** for centralized resource management:
+  - ConfigManager for application-wide configuration settings
+  - LoggerSingleton for consistent logging across all API operations (e.g., API initialization, user/post creation, post retrieval, etc.)
+- **Factory Pattern** for standardized object creation:
+  - PostFactory for validated post creation with type-specific requirements
+  - Centralized validation logic for text, image, and video posts
+- **Extensible post types** with metadata support (text, image, video)
+
+### Security Implementation (Week 4)
 - **Token-based authentication** (REST Framework Token Auth)
-- **Role-based access control (RBAC)** with Django Groups
+- **Role-based access control (RBAC)** with custom permissions
 - **Custom permissions** (IsPostAuthor) for content ownership verification
 - **Secure password hashing** using multiple algorithms:
   - Argon2 (primary)
@@ -32,12 +41,13 @@
 - **Sensitive data protection** (passwords excluded from API responses)
 - **Session and cookie security** (Secure, HttpOnly, HSTS)
 
-### Core Functionality
+### Core Functionality (Weeks 1-3)
 - **User management** with secure registration and authentication
 - **Post creation and management** with author relationships
 - **Comment system** with validation and relational integrity
 - **RESTful API design** with proper serialization
 - **Data validation** at both serializer and model levels
+- **Comprehensive logging** for API operations and error tracking
 
 ---
 
@@ -66,24 +76,27 @@ Authorization: Token <your-token-here>
 
 ### Available Endpoints
 
+**Authentication**
+- `POST /api-token-auth/` - Obtain authentication token (no auth required)
+
 **Users**
-- `GET /posts/users/` - List all users
-- `POST /posts/users/` - Create a new user (register)
+- `POST /posts/users/` - Create a new user / Register (no auth required)
+- `GET /posts/users/` - List all users (requires authentication)
 
 **Posts**
-- `GET /posts/posts/` - List all posts
-- `POST /posts/posts/` - Create a new post
-- `GET /posts/posts/<id>/` - Retrieve a specific post (requires authentication - author only)
+- `GET /posts/posts/` - List all posts (requires authentication)
+- `POST /posts/posts/` - Create a new post (requires authentication)
+- `GET /posts/posts/<id>/` - Retrieve a specific post (requires authentication + author ownership)
 
 **Comments**
-- `GET /posts/comments/` - List all comments
-- `POST /posts/comments/` - Create a new comment
+- `GET /posts/comments/` - List all comments (requires authentication)
+- `POST /posts/comments/` - Create a new comment (requires authentication)
 
 **Additional**
 - `GET /admin/` - Django admin interface
 - `GET /api-auth/` - DRF browsable API login/logout
 
-**Note:** Only `/posts/posts/<id>/` requires authentication and author verification. All other endpoints are publicly accessible.
+**Note:** Only user registration (`POST /posts/users/`) and token authentication (`POST /api-token-auth/`) are publicly accessible. All other endpoints require token authentication.
 
 
 ---
@@ -172,7 +185,7 @@ token, created = Token.objects.get_or_create(user=user)
 print(f"Token: {token.key}")
 exit()
 ```
-
+### IMPORTANT!
 **Save your token!** You'll need it for authenticated API requests.
 
 ---
@@ -182,5 +195,5 @@ exit()
 **Section:** H3101
 **Group:** 6
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** January 29, 2026
+**Last Updated:** February 5, 2026
 
