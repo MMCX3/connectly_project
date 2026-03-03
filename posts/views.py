@@ -26,6 +26,8 @@ from .serializers import UserSerializer, PostSerializer, CommentSerializer
 from .permissions import IsPostAuthor, IsPostAuthorOrAdmin
 from singletons.logger_singleton import LoggerSingleton
 from factories.post_factory import PostFactory
+from rest_framework.pagination import PageNumberPagination
+from .models import Post, Comment, Like
 
 # initialize logger once at module level
 logger = LoggerSingleton().get_logger()
@@ -187,3 +189,82 @@ class PostDetailView(APIView):
                 {"error": "Post not found"}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+
+# HW5 advanced features: pagination for Comments
+class CommentPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'limit'
+    max_page_size = 50
+
+class PostCommentView(APIView):
+
+    """
+    Handles GET (Retrieve all comments for a post) 
+    and POST (Add a comment to a post)
+    """
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        comments = post.comments.all().order_by('-created_at') # Newest first
+        paginator = CommentPagination()
+        paginated_comments = paginator.paginate_queryset(comments, request)
+        serializer = CommentSerializer(paginated_comments, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CommentSerializer(data=request.data)
+        if serializer.is_valid():
+            # automatically assign the logged-in user and the specific post
+            serializer.save(author=request.user, post=post)
+            logger.info(f"Comment added to post {pk} by {request.user.username}")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PostLikeView(APIView):
+
+    """
+    Handles POST (Like a post) and DELETE (Unlike a post)
+    """
+    
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        like, created = Like.objects.get_or_create(user=request.user, post=post)
+        if created:
+            logger.info(f"User {request.user.username} liked post {pk}")
+            return Response({"message": "Post liked successfully."}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"error": "You have already liked this post."}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        try:
+            post = Post.objects.get(pk=pk)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        like = Like.objects.filter(user=request.user, post=post).first()
+        if like:
+            like.delete()
+            logger.info(f"User {request.user.username} unliked post {pk}")
+            return Response({"message": "Post unliked successfully."}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "You have not liked this post."}, status=status.HTTP_400_BAD_REQUEST)

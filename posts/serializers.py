@@ -13,23 +13,24 @@ class UserSerializer(serializers.ModelSerializer):
     
 class PostSerializer(serializers.ModelSerializer):
     comments = serializers.StringRelatedField(many=True, read_only=True)
+    # added fields for advanced features: like_count and comment_count to show how many likes and comments a post has without needing separate API calls
+    like_count = serializers.SerializerMethodField()
+    comment_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Post
-        fields = ['id', 'title', 'content', 'post_type', 'metadata', 'author', 'created_at', 'comments']  # includes all Post fields plus the related comments | week 5 added: post_type, & metadata
-        read_only_fields = ['author']  # author set automatically from request.user
+        fields = ['id', 'title', 'content', 'post_type', 'metadata', 'author', 'created_at', 'comments', 'like_count', 'comment_count']
+        read_only_fields = ['author']
+        
+    def get_like_count(self, obj):
+        return obj.likes.count()
+
+    def get_comment_count(self, obj):
+        return obj.comments.count()
         
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
-        fields = ['id', 'text', 'author', 'post', 'created_at']  # specifies which Comment fields to include in the API response.
-
-    def validate_post(self, value):  # custom validation to ensure the post exists before creating a comment.
-        if not Post.objects.filter(id=value.id).exists():
-            raise serializers.ValidationError("Post not found.")
-        return value
-
-    def validate_author(self, value):
-        if not User.objects.filter(id=value.id).exists():
-            raise serializers.ValidationError("Author not found.")
-        return value
+        fields = ['id', 'text', 'author', 'post', 'created_at']
+        # Made author and post read-only so we can inject them securely in the view
+        read_only_fields = ['author', 'post']
