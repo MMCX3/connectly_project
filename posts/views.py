@@ -14,6 +14,12 @@ UPDATED for complete CRUD:
 
 '''
 
+#Google OAuth
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.oauth2.client import OAuth2Error 
+
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -29,9 +35,28 @@ from factories.post_factory import PostFactory
 from rest_framework.pagination import PageNumberPagination
 from .models import Post, Comment, Like
 
+
 # initialize logger once at module level
 logger = LoggerSingleton().get_logger()
 logger.info("API initialized successfully.")
+
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    callback_url = "https://127.0.0.1:8000/"
+    client_class = OAuth2Client
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # attempt to process the login as usual
+            return super().post(request, *args, **kwargs)
+        except OAuth2Error:
+            # if Google rejects the token, return a 401 error. error handling req
+            return Response(
+                {"error": "Invalid or expired Google token."}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
 
 class UserListCreate(APIView):
 
@@ -200,7 +225,7 @@ class CommentPagination(PageNumberPagination):
 class PostCommentView(APIView):
 
     """
-    Handles GET (Retrieve all comments for a post) 
+    handles GET (Retrieve all comments for a post) 
     and POST (Add a comment to a post)
     """
 
@@ -238,7 +263,7 @@ class PostLikeView(APIView):
     """
     Handles POST (Like a post) and DELETE (Unlike a post)
     """
-    
+
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
