@@ -1,5 +1,6 @@
 # ignore the virtual environment folder.
 .venv/
+venv/
 env/
 
 # ignore the database.
@@ -15,3 +16,5 @@ __pycache__/
 # ignore cert and key files.
 cert.pem
 key.pem
+*.key
+*.pem
