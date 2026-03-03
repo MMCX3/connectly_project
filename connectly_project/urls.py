@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.authtoken import views
 from posts.views import GoogleLogin
+from posts.views import FeedView
 
 urlpatterns = [
     path('admin/', admin.site.urls), # routes to the Django admin interface
@@ -26,4 +27,5 @@ urlpatterns = [
     path('posts/', include('posts.urls')), # includes URLs from the posts app
     path('api-token-auth/', views.obtain_auth_token), # endpoint for obtaining auth tokens for users (for API authentication)
     path('auth/google/login/', GoogleLogin.as_view(), name='google_login'), # endpoint for Google OAuth login
+    path('feed/', FeedView.as_view(), name='news_feed'), # endpoint for personalized news feed
 ]
