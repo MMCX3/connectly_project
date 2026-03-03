@@ -261,7 +261,7 @@ class PostCommentView(APIView):
 class PostLikeView(APIView):
 
     """
-    Handles POST (Like a post) and DELETE (Unlike a post)
+    handles POST (Like a post) and DELETE (Unlike a post)
     """
 
     authentication_classes = [TokenAuthentication]
@@ -293,3 +293,36 @@ class PostLikeView(APIView):
             return Response({"message": "Post unliked successfully."}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "You have not liked this post."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+# HW7 feature - personalized feed with pagination and sorting by date (newest first)
+
+# 1. define the Pagination Logic
+class FeedPagination(PageNumberPagination):
+    page_size = 5  # returns 5 posts per page for easy testing 
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+# 2. define the Feed View
+class FeedView(APIView):
+    """
+    endpoint: GET /feed/
+    requirement: Retrieve posts sorted by date with pagination (cite: 138, 139).
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # sorting: '-created_at' means descending (aka newest first) 
+        posts = Post.objects.all().order_by('-created_at')
+        
+        # pagination: Break the results into chunks 
+        paginator = FeedPagination()
+        paginated_queryset = paginator.paginate_queryset(posts, request)
+        
+        # serialization
+        serializer = PostSerializer(paginated_queryset, many=True)
+        
+        # return the paginated response (includes thw 'next' and 'previous' links) 
+        return paginator.get_paginated_response(serializer.data)
