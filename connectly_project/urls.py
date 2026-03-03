@@ -18,10 +18,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.authtoken import views
+from posts.views import GoogleLogin
 
 urlpatterns = [
     path('admin/', admin.site.urls), # routes to the Django admin interface
     path('api-auth/', include('rest_framework.urls')),  # DRF login/logout
     path('posts/', include('posts.urls')), # includes URLs from the posts app
     path('api-token-auth/', views.obtain_auth_token), # endpoint for obtaining auth tokens for users (for API authentication)
+    path('auth/google/login/', GoogleLogin.as_view(), name='google_login'), # endpoint for Google OAuth login
 ]
