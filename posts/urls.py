@@ -9,7 +9,6 @@
 # Added PostDetailView to handle retrieving a specific post by its primary key (pk).
 
 from django.urls import path
-from .views import UserListCreate, PostListCreate, PostDetailView, CommentListCreate  # imports class-based views for users, posts, and comments.
 from .views import UserListCreate, PostListCreate, PostDetailView, CommentListCreate, PostCommentView, PostLikeView
 from posts.views import GoogleLogin
 
