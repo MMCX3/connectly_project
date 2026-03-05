@@ -14,11 +14,38 @@
 - ✅ Phase 3: Security Implementation (Week 4)
 - ✅ Phase 4: Design Patterns (Week 5)
 
-**Note:** Milestone 2 and Terminal Assessment to follow.
+### Milestone 2
+- ✅ Phase 5: Adding User Interactions (Likes and Comments) (Week 6)
+- ✅ Phase 6: Integrating Third-Party Services (Week 7)
+- ✅ Phase 7: Building a News Feed (Weeks 8-9)
+
+**Note:** Terminal Assessment to follow.
 
 ---
 
 ## Features
+
+### Milestone 2 Features (Weeks 6-9)
+
+#### News Feed (Weeks 8-9)
+- **Personalized feed endpoint** (`GET /feed/`) returning all posts sorted by date (newest first)
+- **Pagination support** with `page` and `page_size` query parameters (default 5 posts per page, max 100)
+- **Paginated response** includes `next` and `previous` navigation links
+
+#### Third-Party Services (Week 7)
+- **Google OAuth 2.0 login** via `django-allauth` and `dj-rest-auth`
+- **Social login endpoint** (`POST /auth/google/login/`) accepting a Google ID token
+- **Automatic user linking**: existing users are linked to their Google account; new users are auto-created from Google profile info
+- **Error handling**: returns 401 for invalid/expired tokens and OAuth denial
+
+#### User Interactions (Week 6)
+- **Like system** with `Like` model enforcing unique-per-user constraints
+- **Post-specific comments** via dedicated endpoints separate from the global comment list
+- **Paginated comments** per post (default 10, max 50) with newest-first ordering
+- **Like/unlike toggle** with duplicate-like guard (returns 400 if already liked)
+- **Aggregate counts** on posts: `like_count` and `comment_count` returned in all post responses without extra API calls
+
+### Milestone 1 Features (Weeks 1-5)
 
 ### Design Patterns (Week 5)
 - **Singleton Pattern** for centralized resource management:
@@ -72,12 +99,14 @@ Users and Comments currently implement CREATE and READ operations:
 
 - **Framework:** Django 5.2.10
 - **API Framework:** Django REST Framework 3.16.1
-- **Authentication:** Token Authentication
+- **Authentication:** Token Authentication, Google OAuth 2.0
+- **Social Auth:** django-allauth 0.51.0, dj-rest-auth 2.3.0
 - **Database:** SQLite3 (Development)
 - **SSL Support:** Werkzeug 3.1.5, pyOpenSSL 25.3.0
 - **Extensions:** django-extensions 3.2.3
 - **Password Hashing:** argon2-cffi 23.1.0, bcrypt 4.3.0
 - **Environment Variables:** python-decouple 3.8
+- **HTTP:** requests, PyJWT 2.8.0
 
 ---
 
@@ -93,6 +122,7 @@ Authorization: Token <your-token-here>
 
 **Authentication**
 - `POST /api-token-auth/` - Obtain authentication token (no auth required)
+- `POST /auth/google/login/` - Login or register via Google OAuth (no auth required)
 
 **Users**
 - `POST /posts/users/` - Create a new user / Register (no auth required)
@@ -108,12 +138,22 @@ Authorization: Token <your-token-here>
 **Comments**
 - `GET /posts/comments/` - List all comments (requires authentication)
 - `POST /posts/comments/` - Create a new comment (requires authentication)
+- `GET /posts/<id>/comments/` - List comments for a specific post, paginated (requires authentication)
+- `POST /posts/<id>/comment/` - Add a comment to a specific post (requires authentication)
+
+**Likes**
+- `POST /posts/<id>/like/` - Like a post (requires authentication)
+- `DELETE /posts/<id>/like/` - Unlike a post (requires authentication)
+
+**Feed**
+- `GET /feed/` - Retrieve paginated feed sorted by newest first (requires authentication)
+  - Query params: `?page=<n>` and `?page_size=<n>` (default: 5, max: 100)
 
 **Additional**
 - `GET /admin/` - Django admin interface
 - `GET /api-auth/` - DRF browsable API login/logout
 
-**Note:** Only user registration (`POST /posts/users/`) and token authentication (`POST /api-token-auth/`) are publicly accessible. All other endpoints require token authentication.
+**Note:** Only user registration (`POST /posts/users/`), token authentication (`POST /api-token-auth/`), and Google OAuth (`POST /auth/google/login/`) are publicly accessible. All other endpoints require token authentication.
 
 ---
 
@@ -150,8 +190,12 @@ pip install -r requirements.txt
 - python-decouple==3.8 — Loads config from .env files.  
 - argon2-cffi==23.1.0 — Argon2 password hashing.  
 - bcrypt==4.3.0 — Bcrypt password hashing.  
-
+- django-allauth==0.51.0 — Social account authentication (Google OAuth).  
+- dj-rest-auth==2.3.0 — REST endpoints for authentication including social login.  
+- PyJWT==2.8.0 — JSON Web Token support.  
+- requests — HTTP library for third-party service integration.  
 ```
+
 ### 3. Configure Environment Variables
 
 Create a `.env` file in the project root:
@@ -224,11 +268,50 @@ exit()
 ### IMPORTANT!
 **Save your token!** You'll need it for authenticated API requests.
 
+### 9. Configure Google OAuth (Homework 6)
+
+**Get a Google OAuth access token:**
+1. Go to [https://developers.google.com/oauthplayground/](https://developers.google.com/oauthplayground/)
+2. Select **Google OAuth API v2** (email and profile only) and authorize
+
+**Get your API token:**
+```
+POST https://127.0.0.1:8000/auth/google/login/
+Content-Type: application/json
+
+{
+  "access_token": "PASTE_TOKEN_FROM_PLAYGROUND_HERE"
+}
+```
+The response will return a token key — use this for all subsequent authenticated requests.
+
+**Using the token in protected endpoints:**
+
+In your request headers, add:
+```
+Key:   Authorization
+Value: Token <your-token-key>
+```
+
+**Running the server:**
+```bash
+python manage.py runserver_plus --cert-file cert.pem --key-file key.pem
+```
+This is required as the project uses HTTPS with SSL cert and RSA encryption.
+
 ---
+---
+
+## Supplementary Files
+
+> **Note:** Files are accessible via MMDC email only.
+
+- [Milestone 1 — Google Sheets](<https://docs.google.com/spreadsheets/d/1eOkYaJPecwkgnQrIF1lsgMLdo0pJ7jp2sNyWqmKj8rI/edit?usp=sharing>)
+- [Milestone 2 — Google Sheets](<https://docs.google.com/spreadsheets/d/1RcifZ7vuT8dULLdRq9ptvxSHtVkN-Y3yuMrduax9S2M/edit?usp=sharing>)
 
 ## Project Information
 
 **Section:** H3101  
 **Group:** 6  
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** February 6, 2026
+**Last Updated:** March 5, 2026
