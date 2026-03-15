@@ -20,6 +20,10 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.oauth2.client import OAuth2Error 
 
+# CSRF exemption for API views 
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator 
+
 # Django and DRF imports
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -49,6 +53,7 @@ def get_post_or_404(pk):
     except Post.DoesNotExist:
         return None
 
+@method_decorator(csrf_exempt, name='dispatch')  # exempts CSRF check required after upgrading to dj-rest-auth 7.0.1; safe because token authentication is used instead of session-based auth where CSRF applies
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = "https://127.0.0.1:8000/"
