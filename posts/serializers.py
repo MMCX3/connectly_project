@@ -12,9 +12,11 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}  # don't return password in responses; added this for security since we have password in the fields, this ensures we can include password for user creation and 'write_only=True' hides pass from responses
     
 class PostSerializer(serializers.ModelSerializer):
+    # returns __str__ of each comment
     comments = serializers.StringRelatedField(many=True, read_only=True)
-    # added fields for advanced features: like_count and comment_count to show how many likes and comments a post has without needing separate API calls
+    # added fields for advanced features: like_count and comment_count to show how many likes and comments a post has without needing separate API calls; computed from related Like objects; avoids extra API calls
     like_count = serializers.SerializerMethodField()
+    #computed from related Comment objects; avoids extra API calls 
     comment_count = serializers.SerializerMethodField()
     
     class Meta:

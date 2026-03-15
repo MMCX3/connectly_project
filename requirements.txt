@@ -9,7 +9,7 @@ pyOpenSSL==25.3.0
 python-decouple==3.8
 argon2-cffi==23.1.0
 bcrypt==4.3.0
-django-allauth==0.51.0
-dj-rest-auth==2.3.0
+django-allauth==0.63.6 # upgraded from django-allauth==0.51.0 cause it's too old to support Python 3.14 (but feel free to change it back if you're using Python 3.13 or below)
+dj-rest-auth==7.0.1 # upgraded from dj-rest-auth==2.2.8 cause it's too old to support django-allauth==0.63.6
 PyJWT==2.8.0
 requests

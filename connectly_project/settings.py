@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'allauth.headless', # added this as django-allauth was upgraded from 0.51.0 to 0.63.6, and the headless module is required for API-based authentication; feel free to remove it if you're using an older version of django-allauth that doesn't have this module
     'dj_rest_auth',
     'dj_rest_auth.registration',
 ]

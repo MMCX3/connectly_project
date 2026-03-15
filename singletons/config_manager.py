@@ -1,4 +1,4 @@
-# singletons/ config_manager.py
+# singletons/config_manager.py
 # Singleton pattern for centralized configuration management
 
 class ConfigManager:

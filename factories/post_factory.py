@@ -10,6 +10,9 @@ class PostFactory:
         if post_type not in dict(Post.POST_TYPES):
             raise ValueError("Invalid post type.")
         
+        # prevent TypeError when metadata is None; ensures dict before key checks
+        metadata = metadata or {}
+        
         # type-specific validation for image posts
         if post_type == 'image' and 'file_size' not in metadata:
             raise ValueError("Image posts require 'file_size' in metadata")

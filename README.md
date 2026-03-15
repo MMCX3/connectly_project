@@ -100,7 +100,7 @@ Users and Comments currently implement CREATE and READ operations:
 - **Framework:** Django 5.2.10
 - **API Framework:** Django REST Framework 3.16.1
 - **Authentication:** Token Authentication, Google OAuth 2.0
-- **Social Auth:** django-allauth 0.51.0, dj-rest-auth 2.3.0
+- **Social Auth:** django-allauth 0.63.6, dj-rest-auth 7.0.1
 - **Database:** SQLite3 (Development)
 - **SSL Support:** Werkzeug 3.1.5, pyOpenSSL 25.3.0
 - **Extensions:** django-extensions 3.2.3
@@ -190,8 +190,8 @@ pip install -r requirements.txt
 - python-decouple==3.8 — Loads config from .env files.  
 - argon2-cffi==23.1.0 — Argon2 password hashing.  
 - bcrypt==4.3.0 — Bcrypt password hashing.  
-- django-allauth==0.51.0 — Social account authentication (Google OAuth).  
-- dj-rest-auth==2.3.0 — REST endpoints for authentication including social login.  
+- django-allauth==0.63.6 — Social account authentication (Google OAuth).  
+- dj-rest-auth==7.0.1 — REST endpoints for authentication including social login.
 - PyJWT==2.8.0 — JSON Web Token support.  
 - requests — HTTP library for third-party service integration.  
 ```
@@ -268,11 +268,26 @@ exit()
 ### IMPORTANT!
 **Save your token!** You'll need it for authenticated API requests.
 
-### 9. Configure Google OAuth (Homework 6)
+### 9. Configure Google OAuth
+
+> **Prerequisites:** Set up your own Google Cloud project and OAuth credentials before using the Playground. 
+
+**Quick summary of required setup:** 
+1. Create a Google Cloud project at [https://console.cloud.google.com/](https://console.cloud.google.com/)
+2. Enable the **Google People API**
+3. Configure the **OAuth consent screen** (External, add email + profile scopes)
+4. Create **OAuth credentials** (Web application) and add these redirect URIs:
+```
+   https://127.0.0.1:8000/accounts/google/login/callback/
+   https://developers.google.com/oauthplayground
+```
+5. Register the credentials in **Django Admin → Social Applications**
 
 **Get a Google OAuth access token:**
 1. Go to [https://developers.google.com/oauthplayground/](https://developers.google.com/oauthplayground/)
-2. Select **Google OAuth API v2** (email and profile only) and authorize
+2. Click the gear icon → check **Use your own OAuth credentials** → paste your Client ID and Secret
+3. Select **Google OAuth API v2** (email and profile only) and authorize
+4. Click **Exchange authorization code for tokens** and copy the **Access token**
 
 **Get your API token:**
 ```
@@ -283,7 +298,9 @@ Content-Type: application/json
   "access_token": "PASTE_TOKEN_FROM_PLAYGROUND_HERE"
 }
 ```
-The response will return a token key — use this for all subsequent authenticated requests.
+The response will return a token key. Use this for all subsequent authenticated requests.
+
+> **Note:** The token returned here is your **Django token key**, not the Google access token. Use the Django token key in the `Authorization: Token ...` header for all protected endpoints. You can also find any user's token at any time in **Django Admin → Auth Token → Tokens**.
 
 **Using the token in protected endpoints:**
 
@@ -314,4 +331,6 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 **Section:** H3101  
 **Group:** 6  
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** March 5, 2026
+**Last Updated:** March 15, 2026
+
+**March 15, 2026 (MS2 Revisions):** Modified code to meet MS2 grading criteria — upgraded django-allauth to 0.63.6 and dj-rest-auth to 7.0.1 for Python 3.14 compatibility, applied code improvements for correctness, variable naming, and reusability.

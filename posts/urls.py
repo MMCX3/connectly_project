@@ -18,7 +18,7 @@ urlpatterns = [
     path('posts/<int:pk>/', PostDetailView.as_view(), name='post-detail'),
     path('comments/', CommentListCreate.as_view(), name='comment-list-create'), 
     
-    # mnew Homework 5 Endpoints
+    # Homework 5 Endpoints
     path('posts/<int:pk>/comments/', PostCommentView.as_view(), name='post-comments'), # handles GET and POST for specific post
     path('posts/<int:pk>/comment/', PostCommentView.as_view(), name='post-comment-single'), # added for exact syllabus match (POST /posts/{id}/comment)
     path('posts/<int:pk>/like/', PostLikeView.as_view(), name='post-like'), # handles POST and DELETE

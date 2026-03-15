@@ -14,13 +14,13 @@ UPDATED for complete CRUD:
 
 '''
 
-#Google OAuth
+# Google OAuth
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.oauth2.client import OAuth2Error 
 
-
+# Django and DRF imports
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -36,10 +36,18 @@ from rest_framework.pagination import PageNumberPagination
 from .models import Post, Comment, Like
 
 
-# initialize logger once at module level
+# logger is initialized once at module level;
+# reuses the same singleton instance across all views
 logger = LoggerSingleton().get_logger()
-logger.info("API initialized successfully.")
+logger.info('API initialized successfully.')
 
+
+def get_post_or_404(pk):
+    """Retrieve a Post by primary key, or return None if not found."""
+    try:
+        return Post.objects.get(pk=pk)
+    except Post.DoesNotExist:
+        return None
 
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
@@ -59,7 +67,7 @@ class GoogleLogin(SocialLoginView):
 
 
 class UserListCreate(APIView):
-
+    """Handles user registration (public) and listing all users (authenticated)."""
     def get_authenticators(self):
         # allow public registration (POST) but require token for viewing users (GET)
         if self.request.method == 'POST':
@@ -97,6 +105,7 @@ class UserListCreate(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class PostListCreate(APIView):
+    """Handles listing all posts and creating new posts via the PostFactory."""
     authentication_classes = [TokenAuthentication] # token authentication required
     permission_classes = [IsAuthenticated] # only authenticated users can access
 
@@ -107,7 +116,7 @@ class PostListCreate(APIView):
         return Response(serializer.data)
 
     def post(self, request): # handles POST requests to create a new post.
-         # use factory pattern to create posts with validation
+        # use factory pattern to create posts with validation
         try:
             post = PostFactory.create_post(
                 post_type=request.data.get('post_type', 'text'),
@@ -128,6 +137,7 @@ class PostListCreate(APIView):
 
 
 class CommentListCreate(APIView):
+    """Handles listing all comments and creating new comments."""
     authentication_classes = [TokenAuthentication] # token authentication required
     permission_classes = [IsAuthenticated] # only authenticated users can access
 
@@ -139,7 +149,7 @@ class CommentListCreate(APIView):
     def post(self, request): # handles POST requests to create a new comment.
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid(): # validates the incoming data
-            serializer.save() # saves the new comment to the database.
+            serializer.save(author=request.user) # saves the new comment to the database; automatically assigns the logged-in user as the author of the comment for security and data integrity.
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -162,58 +172,55 @@ class PostDetailView(APIView):
 
     def get(self, request, pk): 
         """Retrieve a specific post by ID"""
-        try:
-            post = Post.objects.get(pk=pk)
-            # GET requests don't need author/admin check - any authenticated user can view
-            serializer = PostSerializer(post)
-            logger.info(f"Post {pk} retrieved by {request.user.username}")
-            return Response(serializer.data)
-        except Post.DoesNotExist:
+        post = get_post_or_404(pk)
+        if post is None:
             logger.warning(f"Post {pk} not found")
             return Response(
                 {"error": "Post not found"}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+        # GET requests don't need author/admin check - any authenticated user can view
+        serializer = PostSerializer(post)
+        logger.info(f"Post {pk} retrieved by {request.user.username}")
+        return Response(serializer.data)
 
     def put(self, request, pk):
         """Fully update a post (only author or admin)"""
-        try:
-            post = Post.objects.get(pk=pk)
-            # check if user is author or admin
-            self.check_object_permissions(request, post)
-            
-            serializer = PostSerializer(post, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                logger.info(f"Post {pk} updated by {request.user.username}")
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Post.DoesNotExist:
+        post = get_post_or_404(pk)
+        if post is None:
             logger.warning(f"Post {pk} not found for update")
             return Response(
                 {"error": "Post not found"}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+        # check if user is author or admin
+        self.check_object_permissions(request, post)
+        
+        serializer = PostSerializer(post, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            logger.info(f"Post {pk} updated by {request.user.username}")
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         """Delete a post (only author or admin)"""
-        try:
-            post = Post.objects.get(pk=pk)
-            # check if user is author or admin
-            self.check_object_permissions(request, post)
-            
-            post.delete()
-            logger.info(f"Post {pk} deleted by {request.user.username}")
-            return Response(
-                {"message": "Post deleted successfully"}, 
-                status=status.HTTP_204_NO_CONTENT
-            )
-        except Post.DoesNotExist:
+        post = get_post_or_404(pk)
+        if post is None:
             logger.warning(f"Post {pk} not found for deletion")
             return Response(
                 {"error": "Post not found"}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+        # check if user is author or admin
+        self.check_object_permissions(request, post)
+        
+        post.delete()
+        logger.info(f"Post {pk} deleted by {request.user.username}")
+        return Response(
+            {"message": "Post deleted successfully"}, 
+            status=status.HTTP_204_NO_CONTENT
+        )
         
 
 # HW5 advanced features: pagination for Comments
@@ -233,9 +240,8 @@ class PostCommentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
-        try:
-            post = Post.objects.get(pk=pk)
-        except Post.DoesNotExist:
+        post = get_post_or_404(pk)
+        if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         comments = post.comments.all().order_by('-created_at') # Newest first
@@ -245,9 +251,8 @@ class PostCommentView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, pk):
-        try:
-            post = Post.objects.get(pk=pk)
-        except Post.DoesNotExist:
+        post = get_post_or_404(pk)
+        if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = CommentSerializer(data=request.data)
@@ -260,17 +265,14 @@ class PostCommentView(APIView):
 
 class PostLikeView(APIView):
 
-    """
-    handles POST (Like a post) and DELETE (Unlike a post)
-    """
+    """Handles POST (Like a post) and DELETE (Unlike a post)"""
 
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        try:
-            post = Post.objects.get(pk=pk)
-        except Post.DoesNotExist:
+        post = get_post_or_404(pk)
+        if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         like, created = Like.objects.get_or_create(user=request.user, post=post)
@@ -281,9 +283,8 @@ class PostLikeView(APIView):
             return Response({"error": "You have already liked this post."}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        try:
-            post = Post.objects.get(pk=pk)
-        except Post.DoesNotExist:
+        post = get_post_or_404(pk)
+        if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         like = Like.objects.filter(user=request.user, post=post).first()
@@ -319,10 +320,10 @@ class FeedView(APIView):
         
         # pagination: Break the results into chunks 
         paginator = FeedPagination()
-        paginated_queryset = paginator.paginate_queryset(posts, request)
+        paginated_posts = paginator.paginate_queryset(posts, request)
         
         # serialization
-        serializer = PostSerializer(paginated_queryset, many=True)
+        serializer = PostSerializer(paginated_posts, many=True)
         
-        # return the paginated response (includes thw 'next' and 'previous' links) 
+        # return the paginated response (includes the 'next' and 'previous' links) 
         return paginator.get_paginated_response(serializer.data)
