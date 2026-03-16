@@ -1,6 +1,7 @@
-"""
-WSGI config for connectly_project project.
+# connectly_project/wsgi.py
+# WSGI config for connectly_project project.
 
+"""
 It exposes the WSGI callable as a module-level variable named ``application``.
 
 For more information on this file, see

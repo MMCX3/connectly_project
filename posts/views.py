@@ -1,19 +1,6 @@
 # posts/views.py
 # Handles HTTP requests for Users, Posts, and Comments.
 
-'''
-WEEK 5 NOTES (difference from manual):
-# Factory pattern integrated into PostListCreate (didn't create separate CreatePostView) to maintain REST principles, Week 4 security, and avoid endpoint duplication.
-# LoggerSingleton added to UserListCreate (registration/errors) and PostListCreate (factory validation/creation) for centralized logging.
-
-UPDATED for complete CRUD:
-# Added UPDATE (PUT) and DELETE methods to PostDetailView
-# Users and Comments no PUT & DELETE yet, but can be added similarly in the next weeks once next steps are clear.
-# Integrated IsPostAuthorOrAdmin permission for role-based access control
-# Admins can edit/delete any post, authors can only edit/delete their own
-
-'''
-
 # Google OAuth
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
@@ -35,26 +22,31 @@ from .models import Post, Comment
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
 from .permissions import IsPostAuthor, IsPostAuthorOrAdmin
 from singletons.logger_singleton import LoggerSingleton
+from singletons.config_manager import ConfigManager
 from factories.post_factory import PostFactory
 from rest_framework.pagination import PageNumberPagination
 from .models import Post, Comment, Like
 
-
-# logger is initialized once at module level;
+# logger and config are initialized once at module level
 # reuses the same singleton instance across all views
 logger = LoggerSingleton().get_logger()
 logger.info('API initialized successfully.')
+config = ConfigManager()
 
 
 def get_post_or_404(pk):
     """Retrieve a Post by primary key, or return None if not found."""
+
     try:
         return Post.objects.get(pk=pk)
     except Post.DoesNotExist:
         return None
 
 @method_decorator(csrf_exempt, name='dispatch')  # exempts CSRF check required after upgrading to dj-rest-auth 7.0.1; safe because token authentication is used instead of session-based auth where CSRF applies
+
 class GoogleLogin(SocialLoginView):
+    """Handles Google OAuth login using dj-rest-auth and allauth."""
+
     adapter_class = GoogleOAuth2Adapter
     callback_url = "https://127.0.0.1:8000/"
     client_class = OAuth2Client
@@ -73,6 +65,7 @@ class GoogleLogin(SocialLoginView):
 
 class UserListCreate(APIView):
     """Handles user registration (public) and listing all users (authenticated)."""
+    
     def get_authenticators(self):
         # allow public registration (POST) but require token for viewing users (GET)
         if self.request.method == 'POST':
@@ -111,6 +104,7 @@ class UserListCreate(APIView):
 
 class PostListCreate(APIView):
     """Handles listing all posts and creating new posts via the PostFactory."""
+    
     authentication_classes = [TokenAuthentication] # token authentication required
     permission_classes = [IsAuthenticated] # only authenticated users can access
 
@@ -143,6 +137,7 @@ class PostListCreate(APIView):
 
 class CommentListCreate(APIView):
     """Handles listing all comments and creating new comments."""
+    
     authentication_classes = [TokenAuthentication] # token authentication required
     permission_classes = [IsAuthenticated] # only authenticated users can access
 
@@ -158,7 +153,12 @@ class CommentListCreate(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class ProtectedView(APIView): # only authenticated users can access this view using valid tokens.
+class ProtectedView(APIView): 
+    """
+    Handles GET requests to a protected endpoint, demonstrating token authentication.
+    Only authenticated users can access this view using valid tokens.
+    """
+    
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -172,6 +172,7 @@ class PostDetailView(APIView):
     - PUT: Update a post (only author or admin)
     - DELETE: Delete a post (only author or admin)
     """
+    
     authentication_classes = [TokenAuthentication] # token-based authentication
     permission_classes = [IsAuthenticated, IsPostAuthorOrAdmin] # role-based access control
 
@@ -210,6 +211,7 @@ class PostDetailView(APIView):
 
     def delete(self, request, pk):
         """Delete a post (only author or admin)"""
+        
         post = get_post_or_404(pk)
         if post is None:
             logger.warning(f"Post {pk} not found for deletion")
@@ -230,21 +232,21 @@ class PostDetailView(APIView):
 
 # HW5 advanced features: pagination for Comments
 class CommentPagination(PageNumberPagination):
-    page_size = 10
+    """Custom pagination class for comments with configurable page size."""
+
+    page_size = config.get_setting('DEFAULT_PAGE_SIZE')  # sourced from ConfigManager for consistency
     page_size_query_param = 'limit'
     max_page_size = 50
 
 class PostCommentView(APIView):
-
-    """
-    handles GET (Retrieve all comments for a post) 
-    and POST (Add a comment to a post)
-    """
+    """Handles GET (Retrieve all comments for a post) and POST (Add a comment to a post)"""
 
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        """Handles GET requests to retrieve paginated comments for a specific post"""
+        
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -256,6 +258,8 @@ class PostCommentView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, pk):
+        """Handles POST requests to add a comment to a specific post"""
+       
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -269,13 +273,13 @@ class PostCommentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PostLikeView(APIView):
-
     """Handles POST (Like a post) and DELETE (Unlike a post)"""
 
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        """Handles POST requests to like a specific post"""
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -288,6 +292,7 @@ class PostLikeView(APIView):
             return Response({"error": "You have already liked this post."}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        """Handles DELETE requests to unlike a specific post"""
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -304,15 +309,18 @@ class PostLikeView(APIView):
 
 # HW7 feature - personalized feed with pagination and sorting by date (newest first)
 
-# 1. define the Pagination Logic
 class FeedPagination(PageNumberPagination):
-    page_size = 5  # returns 5 posts per page for easy testing 
+    """ 
+    (1) Define the Pagination Logic
+    """
+
+    page_size = config.get_setting('DEFAULT_PAGE_SIZE')  # sourced from ConfigManager for consistency
     page_size_query_param = 'page_size'
     max_page_size = 100
 
-# 2. define the Feed View
 class FeedView(APIView):
     """
+    (2) Define the Feed View 
     endpoint: GET /feed/
     requirement: Retrieve posts sorted by date with pagination (cite: 138, 139).
     """
@@ -320,6 +328,8 @@ class FeedView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """"Handles GET requests to retrieve the paginated news feed"""
+        
         # sorting: '-created_at' means descending (aka newest first) 
         posts = Post.objects.all().order_by('-created_at')
         

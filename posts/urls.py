@@ -1,16 +1,8 @@
 # posts/urls.py
 # Mapped URLs to class-based views for Users, Posts, and Comments.
 
-# Week 3
-# Replaced previous code to map class-based views for Users, Posts, and Comments.
-# Previous code used in urlpatterns was for function-based views.
-
-# Week 4
-# Added PostDetailView to handle retrieving a specific post by its primary key (pk).
-
 from django.urls import path
-from .views import UserListCreate, PostListCreate, PostDetailView, CommentListCreate, PostCommentView, PostLikeView
-from posts.views import GoogleLogin
+from .views import UserListCreate, PostListCreate, PostDetailView, CommentListCreate, PostCommentView, PostLikeView, GoogleLogin
 
 urlpatterns = [
     path('users/', UserListCreate.as_view(), name='user-list-create'),

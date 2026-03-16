@@ -1,3 +1,5 @@
+# connectly_project/asgi.py
+
 """
 ASGI config for connectly_project project.
 

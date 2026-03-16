@@ -4,8 +4,12 @@
 from posts.models import Post
 
 class PostFactory:
+    """Factory for centralized and validated post creation."""
+   
     @staticmethod  # static method : means that it can be called without creating a PostFactory instance
     def create_post(post_type, title, content='', metadata=None, author=None):
+        """Create and return a validated Post object based on post type."""
+        
         # validates post_type is one of the allowed types
         if post_type not in dict(Post.POST_TYPES):
             raise ValueError("Invalid post type.")
@@ -17,8 +21,7 @@ class PostFactory:
         if post_type == 'image' and 'file_size' not in metadata:
             raise ValueError("Image posts require 'file_size' in metadata")
 
-        
-        # type-specific reqs for video posts
+        # type-specific validation for video posts
         if post_type == 'video' and 'duration' not in metadata:
             raise ValueError("Video posts require 'duration' in metadata")
         

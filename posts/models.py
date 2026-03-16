@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 # REASON: custom User lacks Django’s password hashing and auth integration, making it insecure and incompatible with groups and tokens.
 
 class Post(models.Model):
+    """Represents a user post with support for text, image, and video types."""
 
     # post type choices for factory pattern implementation; allows for different post types in the future without changing the database schema
     POST_TYPES = [ 
@@ -24,18 +25,24 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.post_type.title()} Post: {self.title} by {self.author.username}"  # shows type, title, and author
+        """Returns a string representation of the Post, showing its type, title, and author."""
+        return f"{self.post_type.title()} Post: {self.title} by {self.author.username}"  
     
 class Comment(models.Model):  
+    """Represents a comment made by a user on a specific post."""
+
     text = models.TextField() # contains the comment text.
     author = models.ForeignKey(User, related_name='comments', on_delete=models.CASCADE) # links the comment to the User who made it; CASCADE deletes comments if the user is deleted.
     post = models.ForeignKey(Post, related_name='comments', on_delete=models.CASCADE) # links the comment to the Post it belongs to; CASCADE deletes comments if the post is deleted.
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Comment by {self.author.username} on Post {self.post.id}" # returns a string showing who made the comment and on which post.
+        """Returns a string representation of the Comment, showing who made it and on which post."""
+        return f"Comment by {self.author.username} on Post {self.post.id}" 
 
 class Like(models.Model):
+    """Represents a like action by a user on a specific post."""
+
     user = models.ForeignKey(User, related_name='likes', on_delete=models.CASCADE)
     post = models.ForeignKey(Post, related_name='likes', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -45,4 +52,5 @@ class Like(models.Model):
         unique_together = ('user', 'post')
 
     def __str__(self):
+        """Returns a string representation of the Like, showing which user liked which post."""
         return f"{self.user.username} liked Post {self.post.id}"

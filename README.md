@@ -19,7 +19,9 @@
 - ✅ Phase 6: Integrating Third-Party Services (Week 7)
 - ✅ Phase 7: Building a News Feed (Weeks 8-9)
 
-**Note:** Terminal Assessment to follow.
+### Terminal Assessment
+- 🔄 Phase 8: Privacy Settings and Role-Based Access Control (Week 10)
+- 🔄 Phase 9: Performance Optimization — Pagination and Caching (Week 11)
 
 ---
 
@@ -29,7 +31,7 @@
 
 #### News Feed (Weeks 8-9)
 - **Personalized feed endpoint** (`GET /feed/`) returning all posts sorted by date (newest first)
-- **Pagination support** with `page` and `page_size` query parameters (default 5 posts per page, max 100)
+- **Pagination support** with `page` and `page_size` query parameters (default 10 posts per page, max 100)
 - **Paginated response** includes `next` and `previous` navigation links
 
 #### Third-Party Services (Week 7)
@@ -147,7 +149,7 @@ Authorization: Token <your-token-here>
 
 **Feed**
 - `GET /feed/` - Retrieve paginated feed sorted by newest first (requires authentication)
-  - Query params: `?page=<n>` and `?page_size=<n>` (default: 5, max: 100)
+  - Query params: `?page=<n>` and `?page_size=<n>` (default: 10, max: 100)
 
 **Additional**
 - `GET /admin/` - Django admin interface
@@ -334,3 +336,5 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 **Last Updated:** March 15, 2026
 
 **March 15, 2026 (MS2 Revisions):** Modified code to meet MS2 grading criteria — upgraded django-allauth to 0.63.6 and dj-rest-auth to 7.0.1 for Python 3.14 compatibility, applied code improvements for correctness, variable naming, and reusability.
+
+**March 16, 2026 (MS2 Revisions):** Applied overall format consistency across all Python files — added missing class docstrings, method docstrings, and inline comments. Wired `ConfigManager.DEFAULT_PAGE_SIZE` into pagination classes. Registered Post, Comment, and Like models in Django Admin. Updated default page size from 5 to 10 to match ConfigManager.
