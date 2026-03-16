@@ -333,8 +333,8 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 **Section:** H3101  
 **Group:** 6  
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** March 15, 2026
+**Last Updated:** March 16, 2026
 
-**March 15, 2026 (MS2 Revisions):** Modified code to meet MS2 grading criteria — upgraded django-allauth to 0.63.6 and dj-rest-auth to 7.0.1 for Python 3.14 compatibility, applied code improvements for correctness, variable naming, and reusability.
+**March 15, 2026 (MS2 Revisions):** Modified code to meet MS2 grading criteria - upgraded django-allauth to 0.63.6 and dj-rest-auth to 7.0.1 for Python 3.14 compatibility, applied code improvements for correctness, variable naming, and reusability.
 
-**March 16, 2026 (MS2 Revisions):** Applied overall format consistency across all Python files — added missing class docstrings, method docstrings, and inline comments. Wired `ConfigManager.DEFAULT_PAGE_SIZE` into pagination classes. Registered Post, Comment, and Like models in Django Admin. Updated default page size from 5 to 10 to match ConfigManager.
+**March 16, 2026 (MS2 Revisions):** Applied overall format consistency across all Python files - added missing class docstrings, method docstrings, and inline comments. Wired `ConfigManager.DEFAULT_PAGE_SIZE` into pagination classes. Registered Post, Comment, and Like models in Django Admin. Updated default page size from 5 to 10 to match ConfigManager.
