@@ -20,9 +20,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.models import User
 
-# for complex database filtering,
+# for complex database filtering.
 from django.db.models import Q 
 
+# for homework 9 caching layer.
+from django.core.cache import cache
 
 from .models import Post, Comment, Like
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
@@ -43,13 +45,15 @@ config = ConfigManager()
 def get_post_or_404(pk):
     # retrieve a Post by primary key, or return None if not found.
     try:
-        return Post.objects.get(pk=pk)
+        # advanced query optimization; prefetch related data to avoid thw n+1 query issues.
+        return Post.objects.select_related('author').prefetch_related('comments', 'likes').get(pk=pk)
     except Post.DoesNotExist:
         return None
 
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GoogleLogin(SocialLoginView):
+
     # handles Google OAuth login using dj-rest-auth and allauth.
     adapter_class = GoogleOAuth2Adapter
     callback_url = "https://127.0.0.1:8000/"
@@ -79,7 +83,10 @@ class UserListCreate(APIView):
         return [IsAuthenticated()]
 
     def get(self, request): 
-        users = User.objects.all()
+
+        # query optimization: select related profile.
+
+        users = User.objects.select_related('profile').all()
         serializer = UserSerializer(users, many=True) 
         return Response(serializer.data)
 
@@ -106,15 +113,20 @@ class PostListCreate(APIView):
     # handles listing all posts and creating new posts via the PostFactory.
     
     authentication_classes = [TokenAuthentication] 
+
     # added RoleBasedAccessControl to block Guests from POSTing.
     permission_classes = [IsAuthenticated, RoleBasedAccessControl] 
 
     def get(self, request): 
         logger.info("Fetching all posts")  
+        
         # filter out private posts from other users on the general list too!
-        posts = Post.objects.filter(
+        # query optimization: select_related and prefetch_related applied.
+
+        posts = Post.objects.select_related('author').prefetch_related('comments', 'likes').filter(
             Q(privacy='public') | Q(author=request.user)
         ).order_by('-created_at')
+        
         serializer = PostSerializer(posts, many=True) 
         return Response(serializer.data)
 
@@ -127,11 +139,18 @@ class PostListCreate(APIView):
                 metadata=request.data.get('metadata'),
                 author=request.user  
             )
+            
             # safely set privacy if provided in request, otherwise defaults to public.
+
             privacy_setting = request.data.get('privacy', 'public')
             if privacy_setting in ['public', 'private']:
                 post.privacy = privacy_setting
                 post.save()
+
+            # clear the cache when a new post is made so the feed updates.
+
+            cache.clear()
+            logger.info("cache cleared due to new post creation.")
 
             logger.info(f"Post created successfully: {post.title} (type: {post.post_type})")  
             serializer = PostSerializer(post)
@@ -154,7 +173,9 @@ class CommentListCreate(APIView):
     permission_classes = [IsAuthenticated, RoleBasedAccessControl] 
 
     def get(self, request): 
-        comments = Comment.objects.all()
+
+        # advanced query optimization applied.
+        comments = Comment.objects.select_related('author', 'post').all()
         serializer = CommentSerializer(comments, many=True) 
         return Response(serializer.data)
 
@@ -188,6 +209,7 @@ class PostDetailView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
+
         # fully update a post (only author or admin).
         post = get_post_or_404(pk)
         if post is None:
@@ -198,6 +220,9 @@ class PostDetailView(APIView):
         serializer = PostSerializer(post, data=request.data)
         if serializer.is_valid():
             serializer.save()
+
+            # clear cache on update.
+            cache.clear()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -210,6 +235,8 @@ class PostDetailView(APIView):
         self.check_object_permissions(request, post)
         
         post.delete()
+        # clear cache on delete.
+        cache.clear()
         logger.info(f"Post {pk} deleted by {request.user.username}")
         return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         
@@ -230,7 +257,8 @@ class PostCommentView(APIView):
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        comments = post.comments.all().order_by('-created_at') 
+        # advanced query optimization.
+        comments = post.comments.select_related('author').all().order_by('-created_at') 
         paginator = CommentPagination()
         paginated_comments = paginator.paginate_queryset(comments, request)
         serializer = CommentSerializer(paginated_comments, many=True)
@@ -285,10 +313,24 @@ class FeedView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+
+        # 1. create a unique cache key for this user and the page they are on.
+        page_number = request.query_params.get('page', 1)
+        cache_key = f"feed_user_{request.user.id}_page_{page_number}"
         
-        # advanced Database Filtering for Privacy.
-        # selects posts that are either PUBLIC, OR authored by the current user.
-        posts = Post.objects.filter(
+        # 2. check cache first.
+        cached_data = cache.get(cache_key)
+        if cached_data:
+
+            # create the response and add a custom header to prove it's from the cache!
+            response = Response(cached_data)
+            response['X-Cache-Status'] = 'HIT'
+            return response
+
+        # 3. cache miss -> query the database.
+        # advanced database filtering for privac;
+        # advanced query optimization: fetching related data to drastically reduce db load.
+        posts = Post.objects.select_related('author').prefetch_related('comments', 'likes').filter(
             Q(privacy='public') | Q(author=request.user)
         ).order_by('-created_at')
         
@@ -296,4 +338,13 @@ class FeedView(APIView):
         paginated_posts = paginator.paginate_queryset(posts, request)
         
         serializer = PostSerializer(paginated_posts, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        response_data = paginator.get_paginated_response(serializer.data).data
+
+        # 4. store the result in the cache for 5 minutes (300 seconds).
+        cache.set(cache_key, response_data, timeout=300)
+
+        # create the response and add a custom header to prove thatit hit the database!
+        response = Response(response_data)
+        response['X-Cache-Status'] = 'MISS'
+        
+        return response

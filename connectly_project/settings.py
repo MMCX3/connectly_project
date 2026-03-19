@@ -173,3 +173,12 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 
+# Caching Configuration
+# using django's built-in local memory cache for the caching layer.
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'connectly-unique-snowflake',
+    }
+}
