@@ -1,5 +1,5 @@
 # connectly_project/urls.py
-# URL configuration for connectly_project project.
+# URL configuration for connectly_project project
 
 """
 The `urlpatterns` list routes URLs to views. For more information please see:

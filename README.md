@@ -6,7 +6,20 @@
 
 ## Project Overview
 
-### Development Phases
+<details>
+<summary>Branch History</summary>
+
+| Milestone | Branch |
+|---|---|
+| Milestone 1 | `main` |
+| Milestone 2 | `functionality` |
+| Milestone 2 Revised | `functionality-revised-ms2` |
+| Terminal Assessment | `enhancement` |
+
+</details>
+
+<details>
+<summary>Development Phases</summary>
 
 ### Milestone 1
 - ✅ Phase 1: CRUD Operations (Weeks 1-2)
@@ -20,34 +33,61 @@
 - ✅ Phase 7: Building a News Feed (Weeks 8-9)
 
 ### Terminal Assessment
-- 🔄 Phase 8: Privacy Settings and Role-Based Access Control (Week 10)
-- 🔄 Phase 9: Performance Optimization — Pagination and Caching (Week 11)
+- ✅ Phase 8: Privacy Settings and Role-Based Access Control (Week 10)
+- ✅ Phase 9: Performance Optimization — Pagination and Caching (Week 11)
+
+</details>
 
 ---
 
 ## Features
 
-### Milestone 2 Features (Weeks 6-9)
+<details>
+<summary>Terminal Assessment Features (Weeks 10-11)</summary>
 
-#### News Feed (Weeks 8-9)
+### Privacy Settings and Role-Based Access Control (Week 10)
+- **Privacy field on posts** (`public` / `private`) controlling post visibility
+- **Private post enforcement** across all read endpoints: `GET /posts/posts/`, `GET /posts/posts/<id>/`, `GET /posts/<id>/comments/`, `GET /posts/comments/`, and `GET /feed/` — private posts visible only to their owner
+- **Role-based access control** with three roles: `admin`, `user`, and `guest`
+- **Guest restrictions**: read access to public posts only; blocked from creating posts, comments, and likes
+- **Admin-only delete**: only admin users can delete posts (`DELETE /posts/posts/<id>/`) or comments (`DELETE /posts/<id>/comment/<id>/`)
+- **Two-layer privacy defense**: query-level filtering (Q filter) combined with object-level permission enforcement (`EnforcePrivacySettings`)
+- **Automatic UserProfile creation** via Django signal on every new user registration
+
+### Performance Optimization (Week 11)
+- **Feed pagination** via `GET /feed/` with `page` and `page_size` query parameters (default: 10, max: 100)
+- **Feed caching** using Django's built-in cache framework — per-user per-page cache keys with 5-minute TTL
+- **Cache invalidation** on post creation and deletion to keep feed data consistent
+- **`X-Cache-Status` response header** (`HIT` / `MISS`) to observe cache behavior during testing
+- **ConfigManager-driven pagination defaults** — single source of truth for page size across all paginated endpoints
+
+</details>
+
+<details>
+<summary>Milestone 2 Features (Weeks 6-9)</summary>
+
+### News Feed (Weeks 8-9)
 - **Personalized feed endpoint** (`GET /feed/`) returning all posts sorted by date (newest first)
 - **Pagination support** with `page` and `page_size` query parameters (default 10 posts per page, max 100)
 - **Paginated response** includes `next` and `previous` navigation links
 
-#### Third-Party Services (Week 7)
+### Third-Party Services (Week 7)
 - **Google OAuth 2.0 login** via `django-allauth` and `dj-rest-auth`
 - **Social login endpoint** (`POST /auth/google/login/`) accepting a Google ID token
 - **Automatic user linking**: existing users are linked to their Google account; new users are auto-created from Google profile info
 - **Error handling**: returns 401 for invalid/expired tokens and OAuth denial
 
-#### User Interactions (Week 6)
+### User Interactions (Week 6)
 - **Like system** with `Like` model enforcing unique-per-user constraints
 - **Post-specific comments** via dedicated endpoints separate from the global comment list
 - **Paginated comments** per post (default 10, max 50) with newest-first ordering
 - **Like/unlike toggle** with duplicate-like guard (returns 400 if already liked)
 - **Aggregate counts** on posts: `like_count` and `comment_count` returned in all post responses without extra API calls
 
-### Milestone 1 Features (Weeks 1-5)
+</details>
+
+<details>
+<summary>Milestone 1 Features (Weeks 1-5)</summary>
 
 ### Design Patterns (Week 5)
 - **Singleton Pattern** for centralized resource management:
@@ -61,7 +101,7 @@
 ### Security Implementation (Week 4)
 - **Token-based authentication** (REST Framework Token Auth)
 - **Role-based access control (RBAC)** with custom permissions
-- **Custom permissions** (IsPostAuthorOrAdmin) for content ownership and moderation
+- **Custom permissions** (`RoleBasedAccessControl`, `EnforcePrivacySettings`) for content ownership and moderation
 - **Secure password hashing** using multiple algorithms:
   - Argon2 (primary)
   - PBKDF2 (fallback)
@@ -78,26 +118,39 @@
 - **Data validation** at both serializer and model levels
 - **Comprehensive logging** for API operations and error tracking
 
+</details>
+
+---
+
 ## CRUD Implementation Strategy
 
-### Posts: Full CRUD (Week 4 Focus)
-Posts implement complete CRUD operations (CREATE, READ, UPDATE, DELETE) with role-based access control:
-- **Regular users** can create posts and modify/delete their own posts
-- **Admin users** can modify/delete any post for content moderation
-- Demonstrates RBAC implementation as required by Week 4 manual
+<details>
+<summary>Posts: CREATE, READ, DELETE (Week 4 + Terminal Assessment)</summary>
 
-### Users & Comments: Basic Operations (Weeks 1-3)
+Posts implement CREATE, READ, and DELETE operations with role-based access control:
+- **All authenticated users** can create posts and read public posts
+- **Post owners** can read their own private posts
+- **Admin users** can delete any post for content moderation
+- Demonstrates RBAC and privacy enforcement as required by Terminal Assessment
+
+</details>
+
+<details>
+<summary>Users & Comments: Basic Operations (Weeks 1-3)</summary>
+
 Users and Comments currently implement CREATE and READ operations:
 - Foundation established per Weeks 1-3 requirements
-- UPDATE/DELETE operations to be considered for future iterations based on:
-  - User profile management requirements
-  - Comment moderation policies
-  - Security considerations
-- Current focus aligns with Week 4 manual emphasis on Post modification and RBAC testing
+- Comment DELETE added in Terminal Assessment, restricted to admin only
+- Current focus aligns with Terminal Assessment emphasis on privacy and RBAC
+
+</details>
 
 ---
 
 ## Tech Stack
+
+<details>
+<summary>View Tech Stack</summary>
 
 - **Framework:** Django 5.2.10
 - **API Framework:** Django REST Framework 3.16.1
@@ -110,17 +163,24 @@ Users and Comments currently implement CREATE and READ operations:
 - **Environment Variables:** python-decouple 3.8
 - **HTTP:** requests, PyJWT 2.8.0
 
+</details>
+
 ---
 
 ## API Endpoints
 
-### Authentication Design
+<details>
+<summary>Authentication Design</summary>
+
 Include token in request headers for authenticated operations:
 ```
 Authorization: Token <your-token-here>
 ```
 
-### Available Endpoints
+</details>
+
+<details>
+<summary>Available Endpoints</summary>
 
 **Authentication**
 - `POST /api-token-auth/` - Obtain authentication token (no auth required)
@@ -131,38 +191,64 @@ Authorization: Token <your-token-here>
 - `GET /posts/users/` - List all users (requires authentication)
 
 **Posts**
-- `GET /posts/posts/` - List all posts (requires authentication)
-- `POST /posts/posts/` - Create a new post (requires authentication)
-- `GET /posts/posts/<id>/` - Retrieve a specific post (requires authentication)
-- `PUT /posts/posts/<id>/` - Update a specific post (requires authentication + author or admin)
-- `DELETE /posts/posts/<id>/` - Delete a specific post (requires authentication + author or admin)
+- `GET /posts/posts/` - List all posts (requires authentication; private posts visible to owner only)
+- `POST /posts/posts/` - Create a new post (requires authentication; guests blocked)
+- `GET /posts/posts/<id>/` - Retrieve a specific post (requires authentication; private posts visible to owner only)
+- `DELETE /posts/posts/<id>/` - Delete a specific post (requires authentication + admin role)
 
 **Comments**
-- `GET /posts/comments/` - List all comments (requires authentication)
-- `POST /posts/comments/` - Create a new comment (requires authentication)
-- `GET /posts/<id>/comments/` - List comments for a specific post, paginated (requires authentication)
-- `POST /posts/<id>/comment/` - Add a comment to a specific post (requires authentication)
+- `GET /posts/comments/` - List all comments (requires authentication; filters out comments on private posts)
+- `POST /posts/comments/` - Create a new comment (requires authentication; guests blocked)
+- `GET /posts/<id>/comments/` - List comments for a specific post, paginated (requires authentication; private posts visible to owner only)
+- `POST /posts/<id>/comment/` - Add a comment to a specific post (requires authentication; guests blocked)
+- `DELETE /posts/<id>/comment/<comment_id>/` - Delete a specific comment (requires authentication + admin role)
 
 **Likes**
-- `POST /posts/<id>/like/` - Like a post (requires authentication)
-- `DELETE /posts/<id>/like/` - Unlike a post (requires authentication)
+- `POST /posts/<id>/like/` - Like a post (requires authentication; guests blocked)
+- `DELETE /posts/<id>/like/` - Unlike a post (requires authentication; guests blocked)
 
 **Feed**
-- `GET /feed/` - Retrieve paginated feed sorted by newest first (requires authentication)
+- `GET /feed/` - Retrieve paginated feed sorted by newest first (requires authentication; private posts visible to owner only)
   - Query params: `?page=<n>` and `?page_size=<n>` (default: 10, max: 100)
 
 **Additional**
 - `GET /admin/` - Django admin interface
 - `GET /api-auth/` - DRF browsable API login/logout
 
-**Note:** Only user registration (`POST /posts/users/`), token authentication (`POST /api-token-auth/`), and Google OAuth (`POST /auth/google/login/`) are publicly accessible. All other endpoints require token authentication.
+**Note:** Only user registration (`POST /posts/users/`), token authentication (`POST /api-token-auth/`), and Google OAuth (`POST /auth/google/login/`) are publicly accessible without a token. All other endpoints require token authentication.
+
+</details>
+
+<details>
+<summary>Role-Based Access Control Summary</summary>
+
+| Endpoint | Method | Guest | User | Admin |
+|---|---|---|---|---|
+| `POST /posts/users/` | Register | ✅ | ✅ | ✅ |
+| `GET /posts/users/` | List users | ✅ | ✅ | ✅ |
+| `POST /api-token-auth/` | Get token | ✅ | ✅ | ✅ |
+| `POST /auth/google/login/` | Google login | ✅ | ✅ | ✅ |
+| `GET /posts/posts/` | List posts | ✅ public only | ✅ public + own private | ✅ public + own private |
+| `POST /posts/posts/` | Create post | ❌ 403 | ✅ | ✅ |
+| `GET /posts/posts/<id>/` | Get post | ✅ public only | ✅ public + own private | ✅ public + own private |
+| `DELETE /posts/posts/<id>/` | Delete post | ❌ 403 | ❌ 403 | ✅ |
+| `GET /posts/comments/` | List all comments | ✅ public posts only | ✅ public + own private | ✅ public + own private |
+| `POST /posts/comments/` | Create comment | ❌ 403 | ✅ | ✅ |
+| `GET /posts/<id>/comments/` | List post comments | ✅ public posts only | ✅ public + own private | ✅ public + own private |
+| `POST /posts/<id>/comment/` | Add comment to post | ❌ 403 | ✅ public + own private | ✅ |
+| `DELETE /posts/<id>/comment/<id>/` | Delete comment | ❌ 403 | ❌ 403 | ✅ |
+| `POST /posts/<id>/like/` | Like post | ❌ 403 | ✅ | ✅ |
+| `DELETE /posts/<id>/like/` | Unlike post | ❌ 403 | ✅ | ✅ |
+| `GET /feed/` | News feed | ✅ public only | ✅ public + own private | ✅ public + own private |
+
+</details>
 
 ---
 
 ## Installation & Setup
 
-### 1. Clone Repository & Create Virtual Environment
-
+<details>
+<summary>1. Clone Repository & Create Virtual Environment</summary>
 ```bash
 git clone <repository-url>
 cd connectly_project
@@ -176,8 +262,10 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 2. Install Dependencies
+</details>
 
+<details>
+<summary>2. Install Dependencies</summary>
 ```bash
 pip install -r requirements.txt
 ```
@@ -198,10 +286,12 @@ pip install -r requirements.txt
 - requests — HTTP library for third-party service integration.  
 ```
 
-### 3. Configure Environment Variables
+</details>
+
+<details>
+<summary>3. Configure Environment Variables</summary>
 
 Create a `.env` file in the project root:
-
 ```env
 SECRET_KEY=your-secret-key-here
 DEBUG=True
@@ -209,27 +299,32 @@ DEBUG=True
 
 **Note:** The `.env` file is ignored by Git to protect sensitive information.
 
-### 4. Run Migrations
+</details>
 
+<details>
+<summary>4. Run Migrations</summary>
 ```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-### 5. Create Superuser (Optional)
+</details>
 
+<details>
+<summary>5. Create Superuser (Optional)</summary>
 ```bash
 python manage.py createsuperuser
 ```
 
 Follow prompts to set username, email, and password.
 
-### 6. Set Up Admin Group for RBAC
+</details>
 
+<details>
+<summary>6. Set Up Admin Group for RBAC</summary>
 ```bash
 python manage.py shell
 ```
-
 ```python
 from django.contrib.auth.models import Group, User
 
@@ -244,20 +339,43 @@ print(f"Admin groups: {[g.name for g in admin_user.groups.all()]}")
 exit()
 ```
 
-### 7. Generate SSL Certificates
+</details>
 
+<details>
+<summary>7. Set User Role via Django Shell</summary>
+
+New users are assigned the `user` role by default. To assign a different role:
+```bash
+python manage.py shell
+```
+```python
+from django.contrib.auth.models import User
+
+user = User.objects.get(username='your_username')
+user.profile.role = 'admin'  # options: 'user', 'admin', 'guest'
+user.profile.save()
+
+print(f"Role set: {user.profile.role}")
+exit()
+```
+
+</details>
+
+<details>
+<summary>8. Generate SSL Certificates</summary>
 ```bash
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
 ```
 
 This creates `cert.pem` and `key.pem` files needed for HTTPS.
 
-### 8. Create Authentication Token
+</details>
 
+<details>
+<summary>9. Create Authentication Token</summary>
 ```bash
 python manage.py shell
 ```
-
 ```python
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
@@ -267,14 +385,17 @@ token, created = Token.objects.get_or_create(user=user)
 print(f"Token: {token.key}")
 exit()
 ```
-### IMPORTANT!
-**Save your token!** You'll need it for authenticated API requests.
 
-### 9. Configure Google OAuth
+**IMPORTANT!** Save your token — you'll need it for authenticated API requests.
 
-> **Prerequisites:** Set up your own Google Cloud project and OAuth credentials before using the Playground. 
+</details>
 
-**Quick summary of required setup:** 
+<details>
+<summary>10. Configure Google OAuth</summary>
+
+> **Prerequisites:** Set up your own Google Cloud project and OAuth credentials before using the Playground.
+
+**Quick summary of required setup:**
 1. Create a Google Cloud project at [https://console.cloud.google.com/](https://console.cloud.google.com/)
 2. Enable the **Google People API**
 3. Configure the **OAuth consent screen** (External, add email + profile scopes)
@@ -318,7 +439,8 @@ python manage.py runserver_plus --cert-file cert.pem --key-file key.pem
 ```
 This is required as the project uses HTTPS with SSL cert and RSA encryption.
 
----
+</details>
+
 ---
 
 ## Supplementary Files
@@ -326,15 +448,24 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 > **Note:** Files are accessible via MMDC email only.
 
 - [Milestone 1 — Google Sheets](<https://docs.google.com/spreadsheets/d/1eOkYaJPecwkgnQrIF1lsgMLdo0pJ7jp2sNyWqmKj8rI/edit?usp=sharing>)
-- [Milestone 2 — Google Sheets](<https://docs.google.com/spreadsheets/d/1RcifZ7vuT8dULLdRq9ptvxSHtVkN-Y3yuMrduax9S2M/edit?usp=sharing>)
+- [Milestone 2 & TA — Google Sheets](<https://docs.google.com/spreadsheets/d/1RcifZ7vuT8dULLdRq9ptvxSHtVkN-Y3yuMrduax9S2M/edit?usp=sharing>)
+
+---
 
 ## Project Information
 
 **Section:** H3101  
 **Group:** 6  
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** March 16, 2026
+**Last Updated:** March 20, 2026
+
+<details>
+<summary>Revision History</summary>
 
 **March 15, 2026 (MS2 Revisions):** Modified code to meet MS2 grading criteria - upgraded django-allauth to 0.63.6 and dj-rest-auth to 7.0.1 for Python 3.14 compatibility, applied code improvements for correctness, variable naming, and reusability.
 
 **March 16, 2026 (MS2 Revisions):** Applied overall format consistency across all Python files - added missing class docstrings, method docstrings, and inline comments. Wired `ConfigManager.DEFAULT_PAGE_SIZE` into pagination classes. Registered Post, Comment, and Like models in Django Admin. Updated default page size from 5 to 10 to match ConfigManager.
+
+**March 20, 2026 (Terminal Assessment):** Implemented Phase 8 and Phase 9 requirements. Added privacy field to Post model and PostSerializer. Enforced privacy across all read endpoints using Q filters and EnforcePrivacySettings permission class. Added EnforcePrivacySettings to PostCommentView. Fixed privacy leak in CommentListCreate. Removed IsOwnerOrAdmin dead code. Admin-only delete enforced on posts and comments via RoleBasedAccessControl. Feed pagination and caching implemented with per-user per-page cache keys, 5-minute TTL, cache invalidation on mutation, and X-Cache-Status response header.
+
+</details>

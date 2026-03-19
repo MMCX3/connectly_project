@@ -1,5 +1,5 @@
 # posts/urls.py
-# Mapped URLs to class-based views for Users, Posts, and Comments.
+# Mapped URLs to class-based views for Users, Posts, and Comments
 
 from django.urls import path
 from .views import UserListCreate, PostListCreate, PostDetailView, CommentListCreate, PostCommentView, PostLikeView, GoogleLogin
@@ -8,6 +8,7 @@ urlpatterns = [
     path('users/', UserListCreate.as_view(), name='user-list-create'),
     path('posts/', PostListCreate.as_view(), name='post-list-create'),
     path('posts/<int:pk>/', PostDetailView.as_view(), name='post-detail'),
+    path('posts/<int:pk>/comment/<int:comment_id>/', PostCommentView.as_view(), name='post-comment-delete'), # handles DELETE for specific comment on a post
     path('comments/', CommentListCreate.as_view(), name='comment-list-create'), 
     
     # Homework 5 Endpoints
