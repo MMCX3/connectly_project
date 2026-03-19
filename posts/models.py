@@ -1,5 +1,5 @@
 # posts/models.py
-# defines the database models for Users, Posts, and Comments.
+# Defines the database models for Users, Posts, and Comments
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -10,7 +10,7 @@ from django.dispatch import receiver
 # REASON: custom User lacks Django’s password hashing and auth integration, making it insecure and incompatible with groups and tokens.
 
 class UserProfile(models.Model):
-# UserProfile for RBAC extends the built-in User model to include RBAC roles without breaking auth.
+    """ UserProfile for RBAC extends the built-in User model to include RBAC roles without breaking auth. """
     
     ROLE_CHOICES = [
         ('user', 'Regular User'),
@@ -22,18 +22,21 @@ class UserProfile(models.Model):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
 
     def __str__(self):
+        """ This returns a string representation of the UserProfile, showing the username and role. """
         return f"{self.user.username} Profile ({self.role})"
 
 # automatically creates a UserProfile whenever a new User is created.
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
+    """ Signal receiver that creates a UserProfile for each new User. """
+    
     if created:
         UserProfile.objects.create(user=instance)
 
 
 class Post(models.Model):
-    # represents a user post with support for text, image, and video types.
+    """ Represents a user post with support for text, image, and video types. """
 
     # post type choices for factory pattern implementation;
     # allows for different post types in the future without changing the database schema
@@ -67,12 +70,12 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        #this returns a string representation of the Post, showing its type, title, and author.
+        """ This returns a string representation of the Post, showing its type, title, and author. """
         return f"[{self.privacy.upper()}] {self.post_type.title()} Post: {self.title} by {self.author.username}"  
     
 
 class Comment(models.Model):  
-    # represents a comment made by a user on a specific post.
+    """ Represents a comment made by a user on a specific post. """
 
     text = models.TextField()
     # contains the comment text.
@@ -86,12 +89,12 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        #returns a string representation of the Comment, showing who made it and on which post.
+        """ This returns a string representation of the Comment, showing who made it and on which post. """
         return f"Comment by {self.author.username} on Post {self.post.id}" 
 
 
 class Like(models.Model):
-    # represents a like action by a user on a specific post.
+    """ Represents a like action by a user on a specific post. """
 
     user = models.ForeignKey(User, related_name='likes', on_delete=models.CASCADE)
     post = models.ForeignKey(Post, related_name='likes', on_delete=models.CASCADE)
@@ -102,5 +105,5 @@ class Like(models.Model):
         unique_together = ('user', 'post')
 
     def __str__(self):
-        # returns a string representation of the Like, showing which user liked which post.
+        """ This returns a string representation of the Like, showing which user liked which post. """
         return f"{self.user.username} liked Post {self.post.id}"

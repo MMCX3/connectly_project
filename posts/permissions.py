@@ -1,18 +1,21 @@
 # posts/permissions.py
-# defines custom permission classes for role-based access control (RBAC) and Privacy.
+# Defines custom permission classes for role-based access control (RBAC) and Privacy
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from singletons.logger_singleton import LoggerSingleton
 
-# fetch singleton logger for security event tracking.
+# fetch singleton logger for security event tracking
 logger = LoggerSingleton().get_logger()
 
 class RoleBasedAccessControl(BasePermission):
-    # enforces role restrictions based on the version 6 Flow Diagram:
-    # guests cannot create content (POST).
-    # only Admins can perform sensitive operations like deletion (DELETE).
+    """ 
+    Enforces role restrictions based on the version 6 Flow Diagram:
+    - guests cannot create content (POST).
+    - only Admins can perform sensitive operations like deletion (DELETE).
+    """
     
     def has_permission(self, request, view):
+        """ Allows or denies access based on user role and request method. """
 
         # allow read-only operations to pass through to object-level checks.
         if request.method in SAFE_METHODS:
@@ -32,9 +35,11 @@ class RoleBasedAccessControl(BasePermission):
         return True
 
     def has_object_permission(self, request, view, obj):
+        """ Enforces object-level permissions, particularly for DELETE operations. """
+
         role = request.user.profile.role if hasattr(request.user, 'profile') else 'user'
         
-        # onnly Admins can delete.
+        # only Admins can delete.
         if request.method == 'DELETE' and role != 'admin':
             logger.warning(f"403 Forbidden: Non-admin '{request.user.username}' attempted to DELETE object {obj.id}.")
             return False
@@ -43,10 +48,10 @@ class RoleBasedAccessControl(BasePermission):
 
 
 class IsOwnerOrAdmin(BasePermission):
-    # allows update access only if the user is the author or an Admin.
+    """ Allows update access only if the user is the author or an Admin. """
     
     def has_object_permission(self, request, view, obj):
-        # apply specifically to Update methods.
+        """ Enforces object-level permissions for update operations. """
 
         if request.method in ['PUT', 'PATCH']:
             is_admin = hasattr(request.user, 'profile') and request.user.profile.role == 'admin'
@@ -55,11 +60,15 @@ class IsOwnerOrAdmin(BasePermission):
 
 
 class EnforcePrivacySettings(BasePermission):
-    # enforces the post privacy logic:
-    # PUBLIC posts: visible to everyone.
-    # PRIVATE posts: visible ONLY to the owner.
+    """     
+    Enforces the post privacy logic:
+    - PUBLIC posts: visible to everyone.
+    - PRIVATE posts: visible ONLY to the owner. 
+    """
 
     def has_object_permission(self, request, view, obj):
+        """ Enforces object-level permissions based on post privacy settings. """
+
         if request.method in SAFE_METHODS:
             # Check if the object has a privacy attribute (like our Post model)
             if hasattr(obj, 'privacy') and obj.privacy == 'private':

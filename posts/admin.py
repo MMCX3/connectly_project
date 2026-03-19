@@ -1,5 +1,5 @@
 # posts/admin.py
-# Contains the admin configuration for the posts app.
+# Contains the admin configuration for the posts app
 
 from django.contrib import admin
 from .models import Post, Comment, Like, UserProfile

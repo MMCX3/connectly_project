@@ -1,17 +1,17 @@
 # posts/views.py
-# handles HTTP requests for Users, Posts, and Comments.
+# Handles HTTP requests for Users, Posts, and Comments
 
-# Google OAuth.
+# Google OAuth
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
 from allauth.socialaccount.providers.oauth2.client import OAuth2Error 
 
-# CSRF exemption for API views.
+# CSRF exemption for API views
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator 
 
-# Django and DRF imports.
+# Django and DRF imports
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -20,16 +20,16 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.models import User
 
-# for complex database filtering.
+# for complex database filtering
 from django.db.models import Q 
 
-# for homework 9 caching layer.
+# for homework 9 caching layer
 from django.core.cache import cache
 
 from .models import Post, Comment, Like
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
 
-# permissions for RBAC and Privacy.
+# permissions for RBAC and Privacy
 from .permissions import RoleBasedAccessControl, IsOwnerOrAdmin, EnforcePrivacySettings
 
 from singletons.logger_singleton import LoggerSingleton
@@ -43,9 +43,10 @@ config = ConfigManager()
 
 
 def get_post_or_404(pk):
-    # retrieve a Post by primary key, or return None if not found.
+    """ Retrieve a Post by primary key, or return None if not found. """
+  
     try:
-        # advanced query optimization; prefetch related data to avoid thw n+1 query issues.
+        # advanced query optimization; prefetch related data to avoid the n+1 query issues.
         return Post.objects.select_related('author').prefetch_related('comments', 'likes').get(pk=pk)
     except Post.DoesNotExist:
         return None
@@ -53,13 +54,15 @@ def get_post_or_404(pk):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GoogleLogin(SocialLoginView):
+    """ Handles Google OAuth login using dj-rest-auth and allauth. """
 
-    # handles Google OAuth login using dj-rest-auth and allauth.
     adapter_class = GoogleOAuth2Adapter
     callback_url = "https://127.0.0.1:8000/"
     client_class = OAuth2Client
 
     def post(self, request, *args, **kwargs):
+        """ Processes Google OAuth login and returns a Django token key."""
+
         try:
             return super().post(request, *args, **kwargs)
         except OAuth2Error:
@@ -70,27 +73,33 @@ class GoogleLogin(SocialLoginView):
 
 
 class UserListCreate(APIView):
-    # handles user registration (public) and listing all users (authenticated).
+    """ Handles user registration (public) and listing all users (authenticated). """
     
     def get_authenticators(self):
+        """ Returns no authenticator for POST (registration); token auth for other methods. """
+
         if self.request.method == 'POST':
             return []  
         return [TokenAuthentication()]
 
     def get_permissions(self):
+        """ Returns no permissions for registration; IsAuthenticated for all other methods. """
+       
         if self.request.method == 'POST':
             return []  
         return [IsAuthenticated()]
 
     def get(self, request): 
+        """ Handles GET requests to retrieve all registered users. """
 
         # query optimization: select related profile.
-
         users = User.objects.select_related('profile').all()
         serializer = UserSerializer(users, many=True) 
         return Response(serializer.data)
 
     def post(self, request):
+        """ Handles POST requests to register a new user (with hashed password). """
+
         username = request.data.get('username')
         password = request.data.get('password')
         email = request.data.get('email', '')
@@ -110,7 +119,7 @@ class UserListCreate(APIView):
 
 
 class PostListCreate(APIView):
-    # handles listing all posts and creating new posts via the PostFactory.
+    """ Handles listing all posts and creating new posts via the PostFactory. """
     
     authentication_classes = [TokenAuthentication] 
 
@@ -118,6 +127,8 @@ class PostListCreate(APIView):
     permission_classes = [IsAuthenticated, RoleBasedAccessControl] 
 
     def get(self, request): 
+        """ Handles GET requests to retrieve all public posts and the user's own private posts. """
+        
         logger.info("Fetching all posts")  
         
         # filter out private posts from other users on the general list too!
@@ -131,6 +142,8 @@ class PostListCreate(APIView):
         return Response(serializer.data)
 
     def post(self, request): 
+        """ Handles POST requests to create a new post using the PostFactory. """
+      
         try:
             post = PostFactory.create_post(
                 post_type=request.data.get('post_type', 'text'),
@@ -166,13 +179,14 @@ class PostListCreate(APIView):
 
 
 class CommentListCreate(APIView):
-    # handles listing all comments and creating new comments.
+    """ Handles listing all comments and creating new comments. """
     
     authentication_classes = [TokenAuthentication] 
     # roleBasedAccessControl prevents Guests from commenting.
     permission_classes = [IsAuthenticated, RoleBasedAccessControl] 
 
     def get(self, request): 
+        """ Handles GET requests to retrieve all comments. """
 
         # advanced query optimization applied.
         comments = Comment.objects.select_related('author', 'post').all()
@@ -180,6 +194,8 @@ class CommentListCreate(APIView):
         return Response(serializer.data)
 
     def post(self, request): 
+        """ Handles POST requests to create a new comment (logged-in user is automatically set as author). """
+       
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid(): 
             serializer.save(author=request.user) 
@@ -188,14 +204,16 @@ class CommentListCreate(APIView):
 
 
 class PostDetailView(APIView):
-    # handles CRUD operations for individual posts.
+    """ Handles CRUD operations for individual posts. """
     
     authentication_classes = [TokenAuthentication] 
 
-    # layered permissions to handle Privacy (GET), Admin/Owner logic (PUT), and Admin-only logic (DELETE).
+    # layered permissions to handle Privacy (GET) and Admin-only logic (DELETE).
     permission_classes = [IsAuthenticated, RoleBasedAccessControl, EnforcePrivacySettings, IsOwnerOrAdmin] 
 
     def get(self, request, pk): 
+        """ Handles GET requests to retrieve a specific post (privacy settings enforced). """
+
         # retrieve a specific post by ID.
         post = get_post_or_404(pk)
         if post is None:
@@ -208,25 +226,9 @@ class PostDetailView(APIView):
         logger.info(f"Post {pk} retrieved by {request.user.username}")
         return Response(serializer.data)
 
-    def put(self, request, pk):
-
-        # fully update a post (only author or admin).
-        post = get_post_or_404(pk)
-        if post is None:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
-            
-        self.check_object_permissions(request, post)
-        
-        serializer = PostSerializer(post, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-
-            # clear cache on update.
-            cache.clear()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     def delete(self, request, pk):
+        """ Handles DELETE requests to remove a post, restricted to admin only. """
+
         # delete a post (only admin).
         post = get_post_or_404(pk)
         if post is None:
@@ -242,17 +244,23 @@ class PostDetailView(APIView):
         
 
 class CommentPagination(PageNumberPagination):
+    """ Handles the pagination class for comments with settings from ConfigManager. """
+   
     page_size = config.get_setting('DEFAULT_PAGE_SIZE')  
     page_size_query_param = 'limit'
     max_page_size = 50
 
 class PostCommentView(APIView):
+    """ Handles listing and comment creation for a specific post. """
+
     authentication_classes = [TokenAuthentication]
 
     # RoleBasedAccessControl prevents Guests from commenting.
     permission_classes = [IsAuthenticated, RoleBasedAccessControl]
 
     def get(self, request, pk):
+        """ Handles GET requests to retrieve paginated comments for a specific post. """
+
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -265,6 +273,8 @@ class PostCommentView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, pk):
+        """ Handles POST requests to add a comment to a specific post. """ 
+        
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -275,13 +285,35 @@ class PostCommentView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, pk, comment_id):
+        """ Handles DELETE requests to remove a specific comment, restricted to admin only. """
+        post = get_post_or_404(pk)
+        if post is None:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            comment = post.comments.get(pk=comment_id)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # check object permissions; only admin can delete
+        self.check_object_permissions(request, comment)
+
+        comment.delete()
+        logger.info(f"Comment {comment_id} on Post {pk} deleted by {request.user.username}")
+        return Response({"message": "Comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
 class PostLikeView(APIView):
+    """ Handles liking and unliking a post. """
+
     authentication_classes = [TokenAuthentication]
 
     # RoleBasedAccessControl prevents Guests from liking/unliking.
     permission_classes = [IsAuthenticated, RoleBasedAccessControl]
 
     def post(self, request, pk):
+        """ Handles POST requests to like a specific post. """
+
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -292,6 +324,8 @@ class PostLikeView(APIView):
         return Response({"error": "You have already liked this post."}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        """ Handles DELETE requests to unlike a specific post. """
+
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -304,15 +338,20 @@ class PostLikeView(APIView):
 
 
 class FeedPagination(PageNumberPagination):
+    """ Handles pagination for user feed (posts) with settings from ConfigManager. """
+
     page_size = config.get_setting('DEFAULT_PAGE_SIZE')  
     page_size_query_param = 'page_size'
     max_page_size = 100
 
 class FeedView(APIView):
+    """ Handles the user feed with caching for performance optimization. """
+    
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """ Handles GET requests to retrieve the paginated feed; uses cache to reduce database load. """ 
 
         # 1. create a unique cache key for this user and the page they are on.
         page_number = request.query_params.get('page', 1)
@@ -343,7 +382,7 @@ class FeedView(APIView):
         # 4. store the result in the cache for 5 minutes (300 seconds).
         cache.set(cache_key, response_data, timeout=300)
 
-        # create the response and add a custom header to prove thatit hit the database!
+        # create the response and add a custom header to prove that it hit the database!
         response = Response(response_data)
         response['X-Cache-Status'] = 'MISS'
         

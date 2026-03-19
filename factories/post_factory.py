@@ -4,11 +4,11 @@
 from posts.models import Post
 
 class PostFactory:
-    """Factory for centralized and validated post creation."""
+    """ Factory for centralized and validated post creation. """
    
     @staticmethod  # static method : means that it can be called without creating a PostFactory instance
     def create_post(post_type, title, content='', metadata=None, author=None):
-        """Create and return a validated Post object based on post type."""
+        """ Create and return a validated Post object based on post type. """
         
         # validates post_type is one of the allowed types
         if post_type not in dict(Post.POST_TYPES):
