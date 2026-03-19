@@ -30,7 +30,7 @@ from .models import Post, Comment, Like
 from .serializers import UserSerializer, PostSerializer, CommentSerializer
 
 # permissions for RBAC and Privacy
-from .permissions import RoleBasedAccessControl, IsOwnerOrAdmin, EnforcePrivacySettings
+from .permissions import RoleBasedAccessControl, EnforcePrivacySettings
 
 from singletons.logger_singleton import LoggerSingleton
 from singletons.config_manager import ConfigManager
@@ -189,7 +189,9 @@ class CommentListCreate(APIView):
         """ Handles GET requests to retrieve all comments. """
 
         # advanced query optimization applied.
-        comments = Comment.objects.select_related('author', 'post').all()
+        # filter out comments on private posts that don't belong to the requesting user.
+        comments = Comment.objects.select_related('author', 'post').filter(
+            Q(post__privacy='public') | Q(post__author=request.user))
         serializer = CommentSerializer(comments, many=True) 
         return Response(serializer.data)
 
@@ -209,7 +211,7 @@ class PostDetailView(APIView):
     authentication_classes = [TokenAuthentication] 
 
     # layered permissions to handle Privacy (GET) and Admin-only logic (DELETE).
-    permission_classes = [IsAuthenticated, RoleBasedAccessControl, EnforcePrivacySettings, IsOwnerOrAdmin] 
+    permission_classes = [IsAuthenticated, RoleBasedAccessControl, EnforcePrivacySettings] 
 
     def get(self, request, pk): 
         """ Handles GET requests to retrieve a specific post (privacy settings enforced). """
@@ -256,7 +258,7 @@ class PostCommentView(APIView):
     authentication_classes = [TokenAuthentication]
 
     # RoleBasedAccessControl prevents Guests from commenting.
-    permission_classes = [IsAuthenticated, RoleBasedAccessControl]
+    permission_classes = [IsAuthenticated, RoleBasedAccessControl, EnforcePrivacySettings]
 
     def get(self, request, pk):
         """ Handles GET requests to retrieve paginated comments for a specific post. """
@@ -264,6 +266,9 @@ class PostCommentView(APIView):
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # privacy: non-owners cannot read comments on a private post.
+        self.check_object_permissions(request, post)
 
         # advanced query optimization.
         comments = post.comments.select_related('author').all().order_by('-created_at') 
@@ -278,6 +283,9 @@ class PostCommentView(APIView):
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # privacy: non-owners cannot comment on a private post.
+        self.check_object_permissions(request, post)   
 
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():

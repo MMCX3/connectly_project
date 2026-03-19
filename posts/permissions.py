@@ -47,18 +47,6 @@ class RoleBasedAccessControl(BasePermission):
         return True
 
 
-class IsOwnerOrAdmin(BasePermission):
-    """ Allows update access only if the user is the author or an Admin. """
-    
-    def has_object_permission(self, request, view, obj):
-        """ Enforces object-level permissions for update operations. """
-
-        if request.method in ['PUT', 'PATCH']:
-            is_admin = hasattr(request.user, 'profile') and request.user.profile.role == 'admin'
-            return obj.author == request.user or is_admin
-        return True
-
-
 class EnforcePrivacySettings(BasePermission):
     """     
     Enforces the post privacy logic:
