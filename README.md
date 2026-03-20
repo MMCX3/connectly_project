@@ -249,6 +249,7 @@ Authorization: Token <your-token-here>
 
 <details>
 <summary>1. Clone Repository & Create Virtual Environment</summary>
+  
 ```bash
 git clone <repository-url>
 cd connectly_project
@@ -266,6 +267,7 @@ source venv/bin/activate
 
 <details>
 <summary>2. Install Dependencies</summary>
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -303,6 +305,7 @@ DEBUG=True
 
 <details>
 <summary>4. Run Migrations</summary>
+
 ```bash
 python manage.py makemigrations
 python manage.py migrate
@@ -312,6 +315,7 @@ python manage.py migrate
 
 <details>
 <summary>5. Create Superuser (Optional)</summary>
+
 ```bash
 python manage.py createsuperuser
 ```
@@ -322,6 +326,7 @@ Follow prompts to set username, email, and password.
 
 <details>
 <summary>6. Set Up Admin Group for RBAC</summary>
+
 ```bash
 python manage.py shell
 ```
@@ -345,6 +350,7 @@ exit()
 <summary>7. Set User Role via Django Shell</summary>
 
 New users are assigned the `user` role by default. To assign a different role:
+
 ```bash
 python manage.py shell
 ```
@@ -363,6 +369,7 @@ exit()
 
 <details>
 <summary>8. Generate SSL Certificates</summary>
+
 ```bash
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
 ```
@@ -373,6 +380,7 @@ This creates `cert.pem` and `key.pem` files needed for HTTPS.
 
 <details>
 <summary>9. Create Authentication Token</summary>
+
 ```bash
 python manage.py shell
 ```
@@ -400,10 +408,12 @@ exit()
 2. Enable the **Google People API**
 3. Configure the **OAuth consent screen** (External, add email + profile scopes)
 4. Create **OAuth credentials** (Web application) and add these redirect URIs:
+
 ```
    https://127.0.0.1:8000/accounts/google/login/callback/
    https://developers.google.com/oauthplayground
 ```
+
 5. Register the credentials in **Django Admin → Social Applications**
 
 **Get a Google OAuth access token:**
