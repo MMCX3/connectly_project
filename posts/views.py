@@ -368,6 +368,7 @@ class FeedView(APIView):
         # 2. check cache first.
         cached_data = cache.get(cache_key)
         if cached_data:
+            logger.info(f"Feed cache HIT for {request.user.username} (page {page_number})")
 
             # create the response and add a custom header to prove it's from the cache!
             response = Response(cached_data)
@@ -375,7 +376,7 @@ class FeedView(APIView):
             return response
 
         # 3. cache miss -> query the database.
-        # advanced database filtering for privac;
+        # advanced database filtering for privacy;
         # advanced query optimization: fetching related data to drastically reduce db load.
         posts = Post.objects.select_related('author').prefetch_related('comments', 'likes').filter(
             Q(privacy='public') | Q(author=request.user)
@@ -389,7 +390,8 @@ class FeedView(APIView):
 
         # 4. store the result in the cache for 5 minutes (300 seconds).
         cache.set(cache_key, response_data, timeout=300)
-
+        logger.info(f"Feed cache MISS for {request.user.username} (page {page_number})")
+        
         # create the response and add a custom header to prove that it hit the database!
         response = Response(response_data)
         response['X-Cache-Status'] = 'MISS'

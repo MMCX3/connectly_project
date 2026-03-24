@@ -467,7 +467,7 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 **Section:** H3101  
 **Group:** 6  
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** March 20, 2026
+**Last Updated:** March 24, 2026
 
 <details>
 <summary>Revision History</summary>
@@ -477,5 +477,7 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 **March 16, 2026 (MS2 Revisions):** Applied overall format consistency across all Python files - added missing class docstrings, method docstrings, and inline comments. Wired `ConfigManager.DEFAULT_PAGE_SIZE` into pagination classes. Registered Post, Comment, and Like models in Django Admin. Updated default page size from 5 to 10 to match ConfigManager.
 
 **March 20, 2026 (Terminal Assessment):** Implemented Phase 8 and Phase 9 requirements. Added privacy field to Post model and PostSerializer. Enforced privacy across all read endpoints using Q filters and EnforcePrivacySettings permission class. Added EnforcePrivacySettings to PostCommentView. Fixed privacy leak in CommentListCreate. Removed IsOwnerOrAdmin dead code. Admin-only delete enforced on posts and comments via RoleBasedAccessControl. Feed pagination and caching implemented with per-user per-page cache keys, 5-minute TTL, cache invalidation on mutation, and X-Cache-Status response header.
+
+**March 24, 2026 (Logging Enhancement):** Added cache HIT and MISS logger calls to `FeedView` in `views.py` for improved observability — terminal now logs `Feed cache HIT for <username> (page <n>)` and `Feed cache MISS for <username> (page <n>)` on every feed request.
 
 </details>
