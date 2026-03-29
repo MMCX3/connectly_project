@@ -56,8 +56,8 @@
 
 ### Performance Optimization (Week 11)
 - **Feed pagination** via `GET /feed/` with `page` and `page_size` query parameters (default: 10, max: 100)
-- **Feed caching** using Django's built-in cache framework — per-user per-page cache keys with 5-minute TTL
-- **Cache invalidation** on post creation and deletion to keep feed data consistent
+- **Feed, post list, and post detail caching** using Django's built-in cache framework — per-user per-page cache keys with 5-minute TTL
+- **Targeted cache invalidation** on post/comment/like mutations — invalidates only the acting user's relevant cache keys instead of clearing the entire cache
 - **`X-Cache-Status` response header** (`HIT` / `MISS`) to observe cache behavior during testing
 - **ConfigManager-driven pagination defaults** — single source of truth for page size across all paginated endpoints
 
@@ -467,7 +467,7 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 **Section:** H3101  
 **Group:** 6  
 **Members:** Abdelfattah, R., De Lara, C., Manicad, K., Samaniego, M., Tantoco, H.  
-**Last Updated:** March 24, 2026
+**Last Updated:** March 29, 2026
 
 <details>
 <summary>Revision History</summary>
@@ -479,5 +479,7 @@ This is required as the project uses HTTPS with SSL cert and RSA encryption.
 **March 20, 2026 (Terminal Assessment):** Implemented Phase 8 and Phase 9 requirements. Added privacy field to Post model and PostSerializer. Enforced privacy across all read endpoints using Q filters and EnforcePrivacySettings permission class. Added EnforcePrivacySettings to PostCommentView. Fixed privacy leak in CommentListCreate. Removed IsOwnerOrAdmin dead code. Admin-only delete enforced on posts and comments via RoleBasedAccessControl. Feed pagination and caching implemented with per-user per-page cache keys, 5-minute TTL, cache invalidation on mutation, and X-Cache-Status response header.
 
 **March 24, 2026 (Logging Enhancement):** Added cache HIT and MISS logger calls to `FeedView` in `views.py` for improved observability — terminal now logs `Feed cache HIT for <username> (page <n>)` and `Feed cache MISS for <username> (page <n>)` on every feed request.
+
+**March 29, 2026 (TA Revisions):** Applied post-feedback code improvements — extended caching to `PostListCreate` and `PostDetailView` with per-user cache keys and `X-Cache-Status` headers; replaced `cache.clear()` with targeted `invalidate_post_caches()` helper for surgical cache invalidation; scoped `RoleBasedAccessControl.has_object_permission()` DELETE restriction to `Post` and `Comment` objects only, excluding `Like` deletions (unlike is a user action, not a moderation action); fixed `PostLikeView.delete()` to manually enforce privacy instead of calling `check_object_permissions()` to prevent regular users from being incorrectly blocked when unliking; added privacy enforcement to `CommentListCreate.post()` to close the privacy hole on the global comment endpoint; fixed circular import in `permissions.py` by changing to relative import.
 
 </details>

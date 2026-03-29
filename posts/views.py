@@ -51,6 +51,24 @@ def get_post_or_404(pk):
     except Post.DoesNotExist:
         return None
 
+def invalidate_post_caches(user_id, post_id=None):
+    """ 
+    Invalidates relevant cache keys on post/comment/like mutations.
+    
+    Deletes the acting user's feed pages (1-10) and global post list cache.
+    Also deletes the specific post cache if post_id is provided.
+    This is more fitting than cache.clear() which wipes all users' caches.
+    """
+    # invalidate the acting user's feed pages
+    for page in range(1, 11): 
+        cache.delete(f"feed_user_{user_id}_page_{page}")
+
+    # invalidate the global post list for this user
+    cache.delete(f"all_posts_user_{user_id}")
+
+    # invalidate the specific post detail cache if relevant
+    if post_id:
+        cache.delete(f"post_{post_id}_user_{user_id}")
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GoogleLogin(SocialLoginView):
@@ -210,10 +228,20 @@ class CommentListCreate(APIView):
 
     def post(self, request): 
         """ Handles POST requests to create a new comment (logged-in user is automatically set as author). """
-       
+
+        # privacy check: prevent commenting on a private post via the global comment endpoint.
+        post_id = request.data.get('post')
+        try:
+            post = Post.objects.get(pk=post_id)
+        except Post.DoesNotExist:
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if post.privacy == 'private' and post.author != request.user:
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid(): 
-            serializer.save(author=request.user) 
+            serializer.save(author=request.user, post=post) 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -229,7 +257,17 @@ class PostDetailView(APIView):
     def get(self, request, pk): 
         """ Handles GET requests to retrieve a specific post (privacy settings enforced). """
 
-        # retrieve a specific post by ID.
+        # 1. unique cache key per user per post
+        cache_key = f"post_{pk}_user_{request.user.id}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            logger.info(f"Post {pk} cache HIT for {request.user.username}")
+            response = Response(cached_data)
+            response['X-Cache-Status'] = 'HIT'
+            return response
+
+        # 2. cache miss -> retrieve from database
         post = get_post_or_404(pk)
         if post is None:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -239,7 +277,13 @@ class PostDetailView(APIView):
         
         serializer = PostSerializer(post)
         logger.info(f"Post {pk} retrieved by {request.user.username}")
-        return Response(serializer.data)
+
+        # 3. store in cache for 5 minutes
+        cache.set(cache_key, serializer.data, timeout=300)
+
+        response = Response(serializer.data)
+        response['X-Cache-Status'] = 'MISS'
+        return response
 
     def delete(self, request, pk):
         """ Handles DELETE requests to remove a post, restricted to admin only. """
@@ -353,8 +397,9 @@ class PostLikeView(APIView):
         if post is None:
             return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # enforce privacy check before allowing the unlike
-        self.check_object_permissions(request, post)
+        # only enforce privacy here ; unliking is a user action, not an admin-only delete
+        if post.privacy == 'private' and post.author != request.user:
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         like = Like.objects.filter(user=request.user, post=post).first()
         if like:
@@ -363,7 +408,6 @@ class PostLikeView(APIView):
             cache.clear()
             return Response({"message": "post unliked successfully."}, status=status.HTTP_200_OK)
         return Response({"error": "you have not liked this post."}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class FeedPagination(PageNumberPagination):
     """ Handles pagination for user feed (posts) with settings from ConfigManager. """

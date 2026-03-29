@@ -3,6 +3,7 @@
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from singletons.logger_singleton import LoggerSingleton
+from .models import Post, Comment
 
 # fetch singleton logger for security event tracking
 logger = LoggerSingleton().get_logger()
@@ -35,12 +36,19 @@ class RoleBasedAccessControl(BasePermission):
         return True
 
     def has_object_permission(self, request, view, obj):
-        """ Enforces object-level permissions, particularly for DELETE operations. """
+        """ 
+        Enforces object-level permissions, particularly for DELETE operations.
+        
+        DELETE is restricted to admins only for Post and Comment objects.
+        Like deletions (unlike actions) are intentionally excluded since they are
+        user-level actions, not moderation actions.
+        """
 
         role = request.user.profile.role if hasattr(request.user, 'profile') else 'user'
         
-        # only Admins can delete.
-        if request.method == 'DELETE' and role != 'admin':
+        # only Admins can delete Posts or Comments (content moderation).
+        # Like objects are excluded — unliking is a normal user action, not admin-only.
+        if request.method == 'DELETE' and isinstance(obj, (Post, Comment)) and role != 'admin':
             logger.warning(f"403 Forbidden: Non-admin '{request.user.username}' attempted to DELETE object {obj.id}.")
             return False
             
