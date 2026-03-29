@@ -119,31 +119,47 @@ class UserListCreate(APIView):
 
 
 class PostListCreate(APIView):
-    """ Handles listing all posts and creating new posts via the PostFactory. """
+    # handles listing all posts and creating new posts via the PostFactory.
     
     authentication_classes = [TokenAuthentication] 
-
     # added RoleBasedAccessControl to block Guests from POSTing.
+
     permission_classes = [IsAuthenticated, RoleBasedAccessControl] 
 
     def get(self, request): 
-        """ Handles GET requests to retrieve all public posts and the user's own private posts. """
+        # 1. unique cache key for the global post list per user
+        cache_key = f"all_posts_user_{request.user.id}"
+        cached_data = cache.get(cache_key)
         
-        logger.info("Fetching all posts")  
+        # 2. check cache first
+        if cached_data:
+            logger.info(f"posts cache hit for {request.user.username}")
+            response = Response(cached_data)
+            response['X-Cache-Status'] = 'HIT'
+            return response
+
+        logger.info("fetching all posts")  
         
+        # 3. cache miss -> query database
         # filter out private posts from other users on the general list too!
-        # query optimization: select_related and prefetch_related applied.
+        # adv query optimization - select_related and prefetch_related applied.
 
         posts = Post.objects.select_related('author').prefetch_related('comments', 'likes').filter(
             Q(privacy='public') | Q(author=request.user)
         ).order_by('-created_at')
         
         serializer = PostSerializer(posts, many=True) 
-        return Response(serializer.data)
+        response_data = serializer.data
+
+        # 4. store in cache for 5 minutes
+        cache.set(cache_key, response_data, timeout=300)
+        logger.info(f"posts cache miss for {request.user.username}")
+        
+        response = Response(response_data)
+        response['X-Cache-Status'] = 'MISS'
+        return response
 
     def post(self, request): 
-        """ Handles POST requests to create a new post using the PostFactory. """
-      
         try:
             post = PostFactory.create_post(
                 post_type=request.data.get('post_type', 'text'),
@@ -153,29 +169,26 @@ class PostListCreate(APIView):
                 author=request.user  
             )
             
-            # safely set privacy if provided in request, otherwise defaults to public.
-
             privacy_setting = request.data.get('privacy', 'public')
             if privacy_setting in ['public', 'private']:
                 post.privacy = privacy_setting
                 post.save()
 
-            # clear the cache when a new post is made so the feed updates.
-
+            # cache invalidation: clear cache so both feed and global list update
             cache.clear()
             logger.info("cache cleared due to new post creation.")
 
-            logger.info(f"Post created successfully: {post.title} (type: {post.post_type})")  
+            logger.info(f"post created successfully: {post.title} (type: {post.post_type})")  
             serializer = PostSerializer(post)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         except ValueError as e:
-            logger.error(f"Error creating post: {str(e)}")  
+            logger.error(f"error creating post: {str(e)}")  
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         except Exception as e:
-            logger.error(f"Unexpected error creating post: {str(e)}")
-            return Response({'error': 'An error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"unexpected error creating post: {str(e)}")
+            return Response({'error': 'an error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CommentListCreate(APIView):
@@ -253,24 +266,21 @@ class CommentPagination(PageNumberPagination):
     max_page_size = 50
 
 class PostCommentView(APIView):
-    """ Handles listing and comment creation for a specific post. """
+    """ Handles listing and creating comments for a specific post, with privacy checks. """
 
     authentication_classes = [TokenAuthentication]
-
     # RoleBasedAccessControl prevents Guests from commenting.
     permission_classes = [IsAuthenticated, RoleBasedAccessControl, EnforcePrivacySettings]
 
     def get(self, request, pk):
-        """ Handles GET requests to retrieve paginated comments for a specific post. """
-
         post = get_post_or_404(pk)
         if post is None:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # privacy: non-owners cannot read comments on a private post.
+        # privacy - non-owners cannot read comments on a private post.
         self.check_object_permissions(request, post)
 
-        # advanced query optimization.
+        # advanced query optimization
         comments = post.comments.select_related('author').all().order_by('-created_at') 
         paginator = CommentPagination()
         paginated_comments = paginator.paginate_queryset(comments, request)
@@ -278,71 +288,81 @@ class PostCommentView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, pk):
-        """ Handles POST requests to add a comment to a specific post. """ 
-        
         post = get_post_or_404(pk)
         if post is None:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # privacy: non-owners cannot comment on a private post.
+        # privacy - non-owners cannot comment on a private post.
         self.check_object_permissions(request, post)   
 
         serializer = CommentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(author=request.user, post=post)
+
+            # cache invalidation - clear cache so feed comment_count updates
+            cache.clear()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, comment_id):
-        """ Handles DELETE requests to remove a specific comment, restricted to admin only. """
         post = get_post_or_404(pk)
         if post is None:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
 
         try:
             comment = post.comments.get(pk=comment_id)
         except Comment.DoesNotExist:
-            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "comment not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # check object permissions; only admin can delete
         self.check_object_permissions(request, comment)
 
         comment.delete()
-        logger.info(f"Comment {comment_id} on Post {pk} deleted by {request.user.username}")
-        return Response({"message": "Comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+        # cache invalidation - clear cache so feed comment_count updates
+        cache.clear()
+        logger.info(f"comment {comment_id} on post {pk} deleted by {request.user.username}")
+        return Response({"message": "comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+    
 
 class PostLikeView(APIView):
-    """ Handles liking and unliking a post. """
+    # handles liking and unliking a post, with privacy checks to prevent liking private posts by non-owners.
 
     authentication_classes = [TokenAuthentication]
+    # added EnforcePrivacySettings to prevent liking private posts!!
 
-    # RoleBasedAccessControl prevents Guests from liking/unliking.
-    permission_classes = [IsAuthenticated, RoleBasedAccessControl]
+    permission_classes = [IsAuthenticated, RoleBasedAccessControl, EnforcePrivacySettings]
 
     def post(self, request, pk):
-        """ Handles POST requests to like a specific post. """
-
         post = get_post_or_404(pk)
         if post is None:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # enforce privacy check before allowing the like
+        self.check_object_permissions(request, post)
 
         like, created = Like.objects.get_or_create(user=request.user, post=post)
         if created:
-            return Response({"message": "Post liked successfully."}, status=status.HTTP_201_CREATED)
-        return Response({"error": "You have already liked this post."}, status=status.HTTP_400_BAD_REQUEST)
+            # cache invalidation - clear cache so feed like_count updates
+            cache.clear()
+            return Response({"message": "post liked successfully."}, status=status.HTTP_201_CREATED)
+        return Response({"error": "you have already liked this post."}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        """ Handles DELETE requests to unlike a specific post. """
-
         post = get_post_or_404(pk)
         if post is None:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # enforce privacy check before allowing the unlike
+        self.check_object_permissions(request, post)
 
         like = Like.objects.filter(user=request.user, post=post).first()
         if like:
             like.delete()
-            return Response({"message": "Post unliked successfully."}, status=status.HTTP_200_OK)
-        return Response({"error": "You have not liked this post."}, status=status.HTTP_400_BAD_REQUEST)
+            # cache invalidation - clear cache so feed like_count updates
+            cache.clear()
+            return Response({"message": "post unliked successfully."}, status=status.HTTP_200_OK)
+        return Response({"error": "you have not liked this post."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class FeedPagination(PageNumberPagination):
