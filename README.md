@@ -9,12 +9,22 @@
 ### Development Phases
 
 ### Milestone 1
-- ✅ Phase 1: CRUD Operations (Weeks 1-2)
-- ✅ Phase 2: Data Handling & Validation (Week 3)
-- ✅ Phase 3: Security Implementation (Week 4)
-- ✅ Phase 4: Design Patterns (Week 5)
+- Phase 1: CRUD Operations (Weeks 1-2)
+- Phase 2: Data Handling & Validation (Week 3)
+- Phase 3: Security Implementation (Week 4)
+- Phase 4: Design Patterns (Week 5)
 
-**Note:** Milestone 2 and Terminal Assessment to follow.
+### Milestone 2
+- Phase 5: User Interactions: Likes & Comments (Weeks 6-9)
+- Phase 6: Integrating 3rd Party Services (Weeks 6-9)
+- Phase 7: News Feed (Weeks 6-9)
+- Phase 8: Functional Enhancement (Weeks 6-9)
+
+### Terminal Assessment
+- Phase 9: Privacy Settings & RBAC (Weeks 10-12)
+- Phase 10: Performance Optimization (Weeks 10-12)
+- Phase 11: Security Enhancement (Weeks 10-12)
+- Phase 12: Scalability Enhancement (Weeks 10-12)
 
 ---
 
