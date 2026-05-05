@@ -1,6 +1,7 @@
 # Connectly API 
 
-## MO-IT152 Integrative Programming and Technologies  
+## MO-IT152 Integrative Programming and Technologies
+### A fully integrated and optimized RESTful API system
 
 ---
 
